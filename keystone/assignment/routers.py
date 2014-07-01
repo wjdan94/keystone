@@ -137,6 +137,10 @@ def append_v3_routers(mapper, routers):
                    controller=role_controller,
                    action='revoke_grant',
                    conditions=dict(method=['DELETE']))
+    mapper.connect('/projects/{project_id}/roles/{role_name}',
+                   controller=role_controller,
+                   action='check_domain_access',
+                   conditions=dict(method=['POST']))
 
     if config.CONF.os_inherit.enabled:
         mapper.connect(('/OS-INHERIT/domains/{domain_id}/users/{user_id}'

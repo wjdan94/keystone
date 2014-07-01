@@ -18,6 +18,7 @@
 """Workflow Logic the Assignment service."""
 
 import copy
+import json
 import uuid
 
 import six
@@ -554,6 +555,32 @@ class RoleV3(controller.V3Controller):
         self.assignment_api.delete_grant(
             role_id, user_id, group_id, domain_id, project_id,
             self._check_if_inherited(context))
+
+    def check_domain_access(self, context, project_id, role_name,
+                            target, credentials):
+        try:
+	    # Load credentials from JSON
+	    credentials = json.loads(credentials)
+
+	    target_domain_id = self.assignment_api.get_project(project_id)['domain_id']
+	    target_user_id = credentials['user_id']
+	    ref = self.assignment_api.list_role_assignments()
+
+	    # Filter desired role assignments
+	    role_assignments = [x for x in ref if 'domain_id' in x and 'user_id' in x]
+
+	    for assignment in role_assignments:
+		domain_id = assignment['domain_id']
+		user_id = assignment['user_id']
+		if target_domain_id == domain_id and target_user_id == user_id:
+		    role_id = assignment['role_id']
+		    role = self.assignment_api.get_role(role_id)
+		    if role['name'] == role_name:
+	   	        return unicode(True)
+        except Exception as e:
+            pass
+
+        return unicode(False)
 
 
 @dependency.requires('assignment_api', 'identity_api')
