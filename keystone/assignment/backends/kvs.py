@@ -94,7 +94,6 @@ class Assignment(kvs.Base, assignment.Driver):
         while project_ref['parent_project_id'] is not None:
             parent_project = self.get_project(project_ref['parent_project_id'])
             hierarchy.append(parent_project)
-            project_ref = parent_project
         return hierarchy
 
     def get_project_by_name(self, tenant_name, domain_id):
@@ -501,6 +500,12 @@ class Assignment(kvs.Base, assignment.Driver):
 
         self._update_metadata(user_id, project_id, metadata_ref,
                               domain_id, group_id)
+
+    def list_grants_from_multiple_targets(self, context, user_id=None,
+                                          group_id=None, targets_ids=None,
+                                          inherited_to_projects=False):
+        return self.list_grants(user_id, group_id, None, targets_ids[0],
+                                inherited_to_projects)
 
     def list_grants(self, user_id=None, group_id=None,
                     domain_id=None, project_id=None,

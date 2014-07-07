@@ -85,6 +85,7 @@ class Assignment(assignment.Driver):
     def create_project(self, tenant_id, tenant):
         self.project.check_allow_create()
         tenant = self._validate_default_domain(tenant)
+        tenant = self._validate_root_parent_project(tenant)
         tenant['name'] = clean.project_name(tenant['name'])
         data = tenant.copy()
         if 'id' not in data or data['id'] is None:
@@ -97,6 +98,7 @@ class Assignment(assignment.Driver):
     def update_project(self, tenant_id, tenant):
         self.project.check_allow_update()
         tenant = self._validate_default_domain(tenant)
+        tenant = self._validate_root_parent_project(tenant)
         if 'name' in tenant:
             tenant['name'] = clean.project_name(tenant['name'])
         return self._set_default_domain_and_parent_project(
@@ -395,6 +397,12 @@ class Assignment(assignment.Driver):
                     user_id, project_id, role_id)
         except KeyError:
             raise exception.RoleNotFound(role_id=role_id)
+
+    def list_grants_from_multiple_targets(self, context, user_id=None,
+                                          group_id=None, targets_ids=None,
+                                          inherited_to_projects=False):
+        return self.list_grants(user_id, group_id, None, targets_ids[0],
+                                inherited_to_projects)
 
     def list_grants(self, user_id=None, group_id=None,
                     domain_id=None, project_id=None,

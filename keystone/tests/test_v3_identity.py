@@ -648,6 +648,49 @@ class IdentityTestCase(test_v3.RestfulTestCase):
         self.get('/users', token=CONF.admin_token,
                  expected_status=exception.Unauthorized.code)
 
+    def test_list_users_with_multiple_backends(self):
+        """Call ``GET /users`` when multiple backends is enabled.
+
+        In this scenario, the controller requires a domain to be specified
+        either as a filter or by using a domain scoped token.
+
+        """
+        self.config_fixture.config(group='identity',
+                                   domain_specific_drivers_enabled=True)
+
+        # Create a user with a role on the domain so we can get a
+        # domain scoped token
+        domain = self.new_domain_ref()
+        self.assignment_api.create_domain(domain['id'], domain)
+        user = self.new_user_ref(domain_id=domain['id'])
+        password = user['password']
+        user = self.identity_api.create_user(user)
+        user['password'] = password
+        self.assignment_api.create_grant(
+            role_id=self.role_id, user_id=user['id'],
+            domain_id=domain['id'])
+
+        ref = self.new_user_ref(domain_id=domain['id'])
+        ref_nd = ref.copy()
+        ref_nd.pop('domain_id')
+        auth = self.build_authentication_request(
+            user_id=user['id'],
+            password=user['password'],
+            domain_id=domain['id'])
+
+        # First try using a domain scoped token
+        r = self.get('/users', auth=auth)
+        self.assertValidUserListResponse(r, ref=user)
+
+        # Now try with an explicit filter
+        r = self.get('/users?domain_id=%(domain_id)s' %
+                     {'domain_id': domain['id']})
+        self.assertValidUserListResponse(r, ref=user)
+
+        # Now try the same thing without a domain token or filter,
+        # which should fail
+        r = self.get('/users', expected_status=exception.Unauthorized.code)
+
     def test_list_users_no_default_project(self):
         """Call ``GET /users`` making sure no default_project_id."""
         user = self.new_user_ref(self.domain_id)
@@ -1543,6 +1586,400 @@ class IdentityInheritanceTestCase(test_v3.RestfulTestCase):
         super(IdentityInheritanceTestCase, self).config_overrides()
         self.config_fixture.config(group='os_inherit', enabled=True)
 
+    def _enable_os_inherit_extension(self):
+        self.config_fixture.config(group='os_inherit', enabled=True)
+
+    def _create_random_domain(self):
+        domain = {'id': uuid.uuid4().hex, 'name': uuid.uuid4().hex}
+        self.assignment_api.create_domain(domain['id'], domain)
+        return domain
+
+    def _create_random_project(self, domain_id, parent_project_id=None):
+        project = {
+            'id': uuid.uuid4().hex, 'name': uuid.uuid4().hex,
+            'domain_id': domain_id}
+        if parent_project_id is not None:
+            project['parent_project_id'] = parent_project_id
+
+        self.assignment_api.create_project(project['id'], project)
+        return project
+
+    def _create_random_user(self, domain_id):
+        user = {
+            'name': uuid.uuid4().hex, 'domain_id': domain_id,
+            'password': uuid.uuid4().hex, 'enabled': True}
+        user = self.identity_api.create_user(user)
+        return user
+
+    def _create_random_group(self, domain_id):
+        group = {'name': uuid.uuid4().hex, 'domain_id': domain_id}
+        group = self.identity_api.create_group(group)
+        return group
+
+    def _create_random_roles(self, number_of_roles):
+        role_list = []
+        for _ in range(number_of_roles):
+            role = {'id': uuid.uuid4().hex, 'name': uuid.uuid4().hex}
+            self.assignment_api.create_role(role['id'], role)
+            role_list.append(role)
+
+        return role_list
+
+    def test_token_comes_with_user_inherited_domain_roles(self):
+        role_list = []
+        for _ in range(4):
+            role = {'id': uuid.uuid4().hex, 'name': uuid.uuid4().hex}
+            self.assignment_api.create_role(role['id'], role)
+            role_list.append(role)
+
+        domain = self.new_domain_ref()
+        self.assignment_api.create_domain(domain['id'], domain)
+
+        user1 = self.new_user_ref(
+            domain_id=domain['id'])
+        password = user1['password']
+        user1 = self.identity_api.create_user(user1)
+        user1['password'] = password
+
+        project1 = self.new_project_ref(
+            domain_id=domain['id'])
+        self.assignment_api.create_project(project1['id'], project1)
+        project2 = self.new_project_ref(
+            domain_id=domain['id'])
+        self.assignment_api.create_project(project2['id'], project2)
+
+        # Add some roles to the project
+        self.assignment_api.add_role_to_user_and_project(
+            user1['id'], project1['id'], role_list[0]['id'])
+        self.assignment_api.add_role_to_user_and_project(
+            user1['id'], project1['id'], role_list[1]['id'])
+        # ..and one on a different project as a spoiler
+        self.assignment_api.add_role_to_user_and_project(
+            user1['id'], project2['id'], role_list[2]['id'])
+
+        base_collection_url = (
+            '/OS-INHERIT/domains/%(domain_id)s/users/%(user_id)s/roles' % {
+                'domain_id': domain['id'],
+                'user_id': user1['id']})
+        member_url = '%(collection_url)s/%(role_id)s/inherited_to_projects' % {
+            'collection_url': base_collection_url,
+            'role_id': role_list[3]['id']}
+
+        self.put(member_url)
+        self.head(member_url)
+
+        # Get a token for user within project of inherited role
+        auth_data = self.build_authentication_request(
+            user_id=user1['id'],
+            password=user1['password'],
+            user_domain_id=domain['id'],
+            project_id=project1['id'])
+        r = self.post('/auth/tokens',
+                      body=auth_data,
+                      expected_status=201)
+
+        entities = r.result.get('token').get('roles')
+        self.assertEqual(3, len(entities))
+        for entity in entities:
+            self.assertIn(entity, role_list)
+
+    def test_check_user_inherited_role_in_project(self):
+        role_list = []
+        for _ in range(2):
+            role = {'id': uuid.uuid4().hex, 'name': uuid.uuid4().hex}
+            self.assignment_api.create_role(role['id'], role)
+            role_list.append(role)
+
+        base_collection_url = (
+            '/OS-INHERIT/projects/%(project_id)s/users/%(user_id)s/roles' % {
+                'project_id': self.project['id'],
+                'user_id': self.user['id']})
+        member_url = '%(collection_url)s/%(role_id)s/inherited_to_projects' % {
+            'collection_url': base_collection_url,
+            'role_id': role_list[0]['id']}
+        collection_url = base_collection_url + '/inherited_to_projects'
+
+        self.put(member_url)
+
+        r = self.get(collection_url)
+        self.assertValidRoleListResponse(r, ref=role_list[0])
+
+    def test_revoke_user_inherited_role_in_project(self):
+        role_list = []
+        for _ in range(2):
+            role = {'id': uuid.uuid4().hex, 'name': uuid.uuid4().hex}
+            self.assignment_api.create_role(role['id'], role)
+            role_list.append(role)
+
+        base_collection_url = (
+            '/OS-INHERIT/projects/%(project_id)s/users/%(user_id)s/roles' % {
+                'project_id': self.project['id'],
+                'user_id': self.user['id']})
+        member_url = '%(collection_url)s/%(role_id)s/inherited_to_projects' % {
+            'collection_url': base_collection_url,
+            'role_id': role_list[0]['id']}
+        collection_url = base_collection_url + '/inherited_to_projects'
+
+        self.put(member_url)
+
+        r = self.get(collection_url)
+        self.assertValidRoleListResponse(r, expected_length=2)
+        self.assertValidRoleListResponse(r, ref=role_list[0])
+        self.delete(member_url)
+        r = self.get(collection_url)
+        self.assertValidRoleListResponse(r, expected_length=1)
+
+    def test_revoke_group_inherited_role_in_project(self):
+        role_list = []
+        for _ in range(4):
+            role = {'id': uuid.uuid4().hex, 'name': uuid.uuid4().hex}
+            self.assignment_api.create_role(role['id'], role)
+            role_list.append(role)
+
+        domain = self.new_domain_ref()
+        self.assignment_api.create_domain(domain['id'], domain)
+        user1 = self.new_user_ref(
+            domain_id=domain['id'])
+        password = user1['password']
+        user1 = self.identity_api.create_user(user1)
+        user1['password'] = password
+        user2 = self.new_user_ref(
+            domain_id=domain['id'])
+        password = user2['password']
+        user2 = self.identity_api.create_user(user2)
+        user2['password'] = password
+        group1 = self.new_group_ref(
+            domain_id=domain['id'])
+        group1 = self.identity_api.create_group(group1)
+        self.identity_api.add_user_to_group(user1['id'],
+                                            group1['id'])
+        self.identity_api.add_user_to_group(user2['id'],
+                                            group1['id'])
+        project1 = self.new_project_ref(
+            domain_id=domain['id'])
+        self.assignment_api.create_project(project1['id'], project1)
+        project2 = self.new_project_ref(
+            domain_id=domain['id'])
+        self.assignment_api.create_project(project2['id'], project2)
+
+        # Now create our inherited role on the project
+        base_collection_url = (
+            '/OS-INHERIT/projects/%(project_id)s/groups/%(group_id)s/roles' % {
+                'project_id': project1['id'],
+                'group_id': group1['id']})
+        member_url = '%(collection_url)s/%(role_id)s/inherited_to_projects' % {
+            'collection_url': base_collection_url,
+            'role_id': role_list[3]['id']}
+        collection_url = base_collection_url + '/inherited_to_projects'
+
+        self.put(member_url)
+        r = self.get(collection_url)
+        self.assertValidRoleListResponse(r, ref=role_list[3])
+        self.delete(member_url)
+        r = self.get(collection_url)
+        self.assertValidRoleListResponse(r, expected_length=0)
+
+    def test_check_group_inherited_role_in_project(self):
+        role_list = []
+        for _ in range(4):
+            role = {'id': uuid.uuid4().hex, 'name': uuid.uuid4().hex}
+            self.assignment_api.create_role(role['id'], role)
+            role_list.append(role)
+
+        domain = self.new_domain_ref()
+        self.assignment_api.create_domain(domain['id'], domain)
+        user1 = self.new_user_ref(
+            domain_id=domain['id'])
+        password = user1['password']
+        user1 = self.identity_api.create_user(user1)
+        user1['password'] = password
+        user2 = self.new_user_ref(
+            domain_id=domain['id'])
+        password = user2['password']
+        user2 = self.identity_api.create_user(user2)
+        user2['password'] = password
+        group1 = self.new_group_ref(
+            domain_id=domain['id'])
+        group1 = self.identity_api.create_group(group1)
+        self.identity_api.add_user_to_group(user1['id'],
+                                            group1['id'])
+        self.identity_api.add_user_to_group(user2['id'],
+                                            group1['id'])
+        project1 = self.new_project_ref(
+            domain_id=domain['id'])
+        self.assignment_api.create_project(project1['id'], project1)
+        project2 = self.new_project_ref(
+            domain_id=domain['id'])
+        self.assignment_api.create_project(project2['id'], project2)
+
+        # Now create our inherited role on the project
+        base_collection_url = (
+            '/OS-INHERIT/projects/%(project_id)s/groups/%(group_id)s/roles' % {
+                'project_id': project1['id'],
+                'group_id': group1['id']})
+        member_url = '%(collection_url)s/%(role_id)s/inherited_to_projects' % {
+            'collection_url': base_collection_url,
+            'role_id': role_list[3]['id']}
+        collection_url = base_collection_url + '/inherited_to_projects'
+
+        self.put(member_url)
+        r = self.get(collection_url)
+        self.assertValidRoleListResponse(r, ref=role_list[3])
+
+    def test_token_comes_with_user_inherited_projects_roles(self):
+        role_list = []
+        NUM_OF_ROLES = 4
+        for _ in range(NUM_OF_ROLES):
+            role = {'id': uuid.uuid4().hex, 'name': uuid.uuid4().hex}
+            self.assignment_api.create_role(role['id'], role)
+            role_list.append(role)
+
+        domain = self.new_domain_ref()
+        self.assignment_api.create_domain(domain['id'], domain)
+
+        user1 = self.new_user_ref(
+            domain_id=domain['id'])
+        password = user1['password']
+        user1 = self.identity_api.create_user(user1)
+        user1['password'] = password
+
+        project1 = self.new_project_ref(
+            domain_id=domain['id'])
+        self.assignment_api.create_project(project1['id'], project1)
+        project2 = self.new_project_ref(
+            domain_id=domain['id'])
+        project2['parent_project_id'] = project1['id']
+        self.assignment_api.create_project(project2['id'], project2)
+        project3 = self.new_project_ref(
+            domain_id=domain['id'])
+        self.assignment_api.create_project(project3['id'], project3)
+        project4 = self.new_project_ref(
+            domain_id=domain['id'])
+        project4['parent_project_id'] = project2['id']
+        self.assignment_api.create_project(project4['id'], project4)
+
+        # Add some roles to the project
+        self.assignment_api.add_role_to_user_and_project(
+            user1['id'], project1['id'], role_list[0]['id'])
+        self.assignment_api.add_role_to_user_and_project(
+            user1['id'], project1['id'], role_list[1]['id'])
+        self.assignment_api.add_role_to_user_and_project(
+            user1['id'], project2['id'], role_list[2]['id'])
+        self.assignment_api.add_role_to_user_and_project(
+            user1['id'], project3['id'], role_list[0]['id'])
+
+        auth_data1 = self.build_authentication_request(
+            user_id=user1['id'],
+            password=user1['password'],
+            user_domain_id=domain['id'],
+            project_id=project1['id'])
+
+        auth_data2 = self.build_authentication_request(
+            user_id=user1['id'],
+            password=user1['password'],
+            user_domain_id=domain['id'],
+            project_id=project2['id'])
+
+        auth_data3 = self.build_authentication_request(
+            user_id=user1['id'],
+            password=user1['password'],
+            user_domain_id=domain['id'],
+            project_id=project3['id'])
+
+        auth_data4 = self.build_authentication_request(
+            user_id=user1['id'],
+            password=user1['password'],
+            user_domain_id=domain['id'],
+            project_id=project4['id'])
+
+        r = self.post('/auth/tokens',
+                      body=auth_data1,
+                      expected_status=201)
+
+        entities = r.result.get('token').get('roles')
+        combined_list = self.assignment_api.get_roles_for_user_and_project(
+            user1['id'], project1['id'])
+        self.assertEqual(2, len(entities))
+        self.assertIn(role_list[0]['id'], combined_list)
+        self.assertIn(role_list[1]['id'], combined_list)
+
+        r = self.post('/auth/tokens',
+                      body=auth_data2,
+                      expected_status=201)
+
+        entities = r.result.get('token').get('roles')
+        combined_list = self.assignment_api.get_roles_for_user_and_project(
+            user1['id'], project2['id'])
+        self.assertEqual(1, len(entities))
+        self.assertIn(role_list[2]['id'], combined_list)
+
+        r = self.post('/auth/tokens',
+                      body=auth_data3,
+                      expected_status=201)
+
+        entities = r.result.get('token').get('roles')
+        combined_list = self.assignment_api.get_roles_for_user_and_project(
+            user1['id'], project3['id'])
+        self.assertEqual(1, len(entities))
+        self.assertIn(role_list[0]['id'], combined_list)
+
+        r = self.post('/auth/tokens',
+                      body=auth_data4,
+                      expected_status=401)
+
+        base_collection_url = (
+            '/OS-INHERIT/projects/%(project_id)s/users/%(user_id)s/roles' % {
+                'project_id': project1['id'],
+                'user_id': user1['id']})
+        member_url = '%(collection_url)s/%(role_id)s/inherited_to_projects' % {
+            'collection_url': base_collection_url,
+            'role_id': role_list[3]['id']}
+
+        self.put(member_url)
+
+        r = self.post('/auth/tokens',
+                      body=auth_data1,
+                      expected_status=201)
+
+        entities = r.result.get('token').get('roles')
+        combined_list = self.assignment_api.get_roles_for_user_and_project(
+            user1['id'], project1['id'])
+        self.assertEqual(3, len(entities))
+        self.assertIn(role_list[0]['id'], combined_list)
+        self.assertIn(role_list[1]['id'], combined_list)
+        self.assertIn(role_list[3]['id'], combined_list)
+
+        r = self.post('/auth/tokens',
+                      body=auth_data2,
+                      expected_status=201)
+
+        entities = r.result.get('token').get('roles')
+        combined_list = self.assignment_api.get_roles_for_user_and_project(
+            user1['id'], project2['id'])
+        self.assertEqual(2, len(entities))
+        self.assertIn(role_list[2]['id'], combined_list)
+        self.assertIn(role_list[3]['id'], combined_list)
+
+        r = self.post('/auth/tokens',
+                      body=auth_data3,
+                      expected_status=201)
+
+        entities = r.result.get('token').get('roles')
+        combined_list = self.assignment_api.get_roles_for_user_and_project(
+            user1['id'], project3['id'])
+        self.assertEqual(1, len(entities))
+        self.assertIn(role_list[0]['id'], combined_list)
+
+        r = self.post('/auth/tokens',
+                      body=auth_data4,
+                      expected_status=201)
+
+        entities = r.result.get('token').get('roles')
+        combined_list = self.assignment_api.get_roles_for_user_and_project(
+            user1['id'], project4['id'])
+        self.assertEqual(1, len(entities))
+        self.assertIn(role_list[3]['id'], combined_list)
+
     def test_crud_user_inherited_domain_role_grants(self):
         role_list = []
         for _ in range(2):
@@ -1571,12 +2008,19 @@ class IdentityInheritanceTestCase(test_v3.RestfulTestCase):
         r = self.get(collection_url)
         self.assertValidRoleListResponse(r, ref=role_list[0],
                                          resource_url=collection_url)
+        self.assertValidRoleListResponse(r, expected_length=2)
+        self.assertValidRoleListResponse(r, ref=role_list[0])
+        self.assertValidRoleListResponse(r, ref=role_list[1])
+        self.assertIn(collection_url, r.result['links']['self'])
 
         # Now delete and check its gone
         self.delete(member_url)
         r = self.get(collection_url)
         self.assertValidRoleListResponse(r, expected_length=0,
                                          resource_url=collection_url)
+        self.assertValidRoleListResponse(r, expected_length=1)
+        self.assertValidRoleListResponse(r, ref=role_list[1])
+        self.assertIn(collection_url, r.result['links']['self'])
 
     def test_list_role_assignments_for_inherited_domain_grants(self):
         """Call ``GET /role_assignments with inherited domain grants``.
@@ -1915,6 +2359,7 @@ class IdentityInheritanceTestCase(test_v3.RestfulTestCase):
         self.assignment_api.create_project(project1['id'], project1)
         project2 = self.new_project_ref(
             domain_id=domain['id'])
+
         self.assignment_api.create_project(project2['id'], project2)
         # Add some spoiler roles to the projects
         self.assignment_api.add_role_to_user_and_project(
@@ -1973,6 +2418,87 @@ class IdentityInheritanceTestCase(test_v3.RestfulTestCase):
             role_id=role_list[4]['id'], inherited_to_projects=True)
         self.assertRoleAssignmentInListResponse(r, ud_entity, link_url=ud_url)
         self.assertRoleAssignmentInListResponse(r, gd_entity, link_url=gd_url)
+
+    def test_list_only_inherited_roles_for_user(self):
+        """Test inherited group roles.
+
+        Test Plan:
+
+        - Enable OS-INHERIT extension
+        - Create a domain with a project and a subproject and two domains
+          with two projects and a subproject
+        - Create a user in the first domain
+        - Assign an direct user role to the project in the first domain, a
+          domain inherited user role on the second domain, and a project
+          inherited user role the project with a subproject in the third domain
+        - Get a list of projects for user, should return all six projects: one
+          from the first domain in virtue of the direct role, three from the
+          second domain in virtue of the domain inherited role and two from the
+          third domain in virtue of the project inherited role
+
+        """
+        domain0 = self._create_random_domain()
+        project0 = self._create_random_project(domain_id=domain0['id'])
+        self._create_random_project(
+            domain_id=domain0['id'], parent_project_id=project0['id'])
+
+        domain1 = self._create_random_domain()
+        project1a = self._create_random_project(domain_id=domain1['id'])
+        subproject1a = self._create_random_project(
+            domain_id=domain1['id'], parent_project_id=project1a['id'])
+        project1b = self._create_random_project(domain_id=domain1['id'])
+
+        domain2 = self._create_random_domain()
+        project2a = self._create_random_project(domain_id=domain2['id'])
+        subproject2a = self._create_random_project(
+            domain_id=domain2['id'], parent_project_id=project2a['id'])
+        subproject2ab = self._create_random_project(
+            domain_id=domain2['id'], parent_project_id=project2a['id'])
+        self._create_random_project(domain_id=domain2['id'])
+
+        user1 = self._create_random_user(domain_id=domain0['id'])
+        role_list = self._create_random_roles(7)
+
+        # Direct role on project0
+        self.assignment_api.create_grant(user_id=user1['id'],
+                                         project_id=project0['id'],
+                                         role_id=role_list[0]['id'])
+        # Domain inherited role on domain1
+        self.assignment_api.create_grant(user_id=user1['id'],
+                                         domain_id=domain1['id'],
+                                         role_id=role_list[0]['id'],
+                                         inherited_to_projects=True)
+        # Project inherited role on project2a
+        self.assignment_api.create_grant(user_id=user1['id'],
+                                         project_id=project2a['id'],
+                                         role_id=role_list[0]['id'],
+                                         inherited_to_projects=True)
+
+        base_collection_url = (
+            '/OS-INHERIT/projects/%(project_id)s/users/%(user_id)s/roles' % {
+                'project_id': project0['id'],
+                'user_id': user1['id']})
+        collection_url = base_collection_url + '/inherited_to_projects'
+
+        r = self.get(collection_url)
+        self.assertValidRoleListResponse(r, ref=role_list[0])
+
+        user_projects = self.assignment_api.list_projects_for_user(user1['id'])
+        user_projects = [p['id'] for p in user_projects]
+        self.assertEqual(7, len(user_projects))
+
+        # In virtue of the direct role
+        self.assertIn(project0['id'], user_projects)
+
+        # In virtue of the domain inherited role
+        self.assertIn(project1a['id'], user_projects)
+        self.assertIn(subproject1a['id'], user_projects)
+        self.assertIn(project1b['id'], user_projects)
+
+        # In virtue of the project inherited role
+        self.assertIn(project2a['id'], user_projects)
+        self.assertIn(subproject2ab['id'], user_projects)
+        self.assertIn(subproject2a['id'], user_projects)
 
 
 class IdentityInheritanceDisabledTestCase(test_v3.RestfulTestCase):

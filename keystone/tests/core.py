@@ -26,7 +26,6 @@ import warnings
 
 import fixtures
 import logging
-from oslo.config import fixture as config_fixture
 import oslotest.base as oslotest
 from oslotest import mockpatch
 from paste import deploy
@@ -50,6 +49,7 @@ from keystone import config
 from keystone import exception
 from keystone.i18n import _
 from keystone import notifications
+from keystone.openstack.common.fixture import config as config_fixture
 from keystone.openstack.common import log
 from keystone.tests import ksfixtures
 
@@ -367,7 +367,7 @@ class TestCase(BaseTestCase):
             ca_certs='examples/pki/certs/cacert.pem')
         self.config_fixture.config(
             group='token',
-            driver='keystone.token.persistence.backends.kvs.Token')
+            driver='keystone.token.backends.kvs.Token')
         self.config_fixture.config(
             group='trust',
             driver='keystone.trust.backends.kvs.Trust')
@@ -759,7 +759,7 @@ class SQLDriverOverrides(object):
             driver='keystone.contrib.revoke.backends.sql.Revoke')
         self.config_fixture.config(
             group='token',
-            driver='keystone.token.persistence.backends.sql.Token')
+            driver='keystone.token.backends.sql.Token')
         self.config_fixture.config(
             group='trust',
             driver='keystone.trust.backends.sql.Trust')

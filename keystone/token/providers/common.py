@@ -144,17 +144,12 @@ class V3TokenDataHelper(object):
 
     def _get_filtered_project(self, project_id):
         project_ref = self.assignment_api.get_project(project_id)
-        parents = self.assignment_api.list_project_parents(
+        hierarchical_ids = self.assignment_api.get_project_hierarchy(
             project_id)
-
-        hierarchical_ids = [project['id'] for project in parents]
-        hierarchical_ids.append(project_id)
-        hierarchical_ids = hierarchical_ids[::-1]
-
         filtered_project = {
             'id': project_ref['id'],
             'name': project_ref['name'],
-            'hierarchy': '.'.join(hierarchical_ids)}
+            'hierarchy': hierarchical_ids}
         filtered_project['domain'] = self._get_filtered_domain(
             project_ref['domain_id'])
         return filtered_project
@@ -318,20 +313,18 @@ class V3TokenDataHelper(object):
             # TODO(ayoung): Enforce Endpoints for trust
             token_data['catalog'] = service_catalog
 
-    def _populate_token_dates(self, token_data, expires=None, trust=None,
-                              issued_at=None):
+    def _populate_token_dates(self, token_data, expires=None, trust=None):
         if not expires:
             expires = provider.default_expire_time()
         if not isinstance(expires, six.string_types):
             expires = timeutils.isotime(expires, subsecond=True)
         token_data['expires_at'] = expires
-        token_data['issued_at'] = (issued_at or
-                                   timeutils.isotime(subsecond=True))
+        token_data['issued_at'] = timeutils.isotime(subsecond=True)
 
     def get_token_data(self, user_id, method_names, extras,
                        domain_id=None, project_id=None, expires=None,
                        trust=None, token=None, include_catalog=True,
-                       bind=None, access_token=None, issued_at=None):
+                       bind=None, access_token=None):
         token_data = {'methods': method_names,
                       'extras': extras}
 
@@ -355,8 +348,7 @@ class V3TokenDataHelper(object):
         if include_catalog:
             self._populate_service_catalog(token_data, user_id, domain_id,
                                            project_id, trust)
-        self._populate_token_dates(token_data, expires=expires, trust=trust,
-                                   issued_at=issued_at)
+        self._populate_token_dates(token_data, expires=expires, trust=trust)
         self._populate_oauth_section(token_data, access_token)
         return {'token': token_data}
 
@@ -398,7 +390,7 @@ class BaseProvider(provider.Provider):
                 return token.provider.V2
             if 'token' in token_data and 'methods' in token_data['token']:
                 return token.provider.V3
-        raise exception.UnsupportedTokenVersionException()
+        raise token.provider.UnsupportedTokenVersionException()
 
     def issue_v2_token(self, token_ref, roles_ref=None,
                        catalog_ref=None):
@@ -644,17 +636,13 @@ class BaseProvider(provider.Provider):
             project_ref = token_ref.get('tenant')
             if project_ref:
                 project_id = project_ref['id']
-
-            issued_at = token_ref['token_data']['access']['token']['issued_at']
-
             token_data = self.v3_token_data_helper.get_token_data(
                 token_ref['user']['id'],
                 ['password', 'token'],
                 {},
                 project_id=project_id,
                 bind=token_ref.get('bind'),
-                expires=token_ref['expires'],
-                issued_at=issued_at)
+                expires=token_ref['expires'])
         return token_data
 
     def validate_token(self, token_id):
@@ -664,4 +652,4 @@ class BaseProvider(provider.Provider):
             return self._validate_v3_token_ref(token_ref)
         elif version == token.provider.V2:
             return self._validate_v2_token_ref(token_ref)
-        raise exception.UnsupportedTokenVersionException()
+        raise token.provider.UnsupportedTokenVersionException()

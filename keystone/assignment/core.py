@@ -175,6 +175,65 @@ class Manager(manager.Manager):
         self.credential_api.delete_credentials_for_project(tenant_id)
         return ret
 
+    def _get_inherited_roles_for_group_and_project(self, user_id, project_id):
+
+        def _get_group_project_inherited_roles(user_id, project_ref):
+            role_list = []
+            group_refs = self.identity_api.list_groups_for_user(user_id)
+            for x in group_refs:
+                try:
+                    metadata_ref = self._get_metadata(
+                        group_id=x['id'], tenant_id=project_ref['id'])
+                    role_list += self._roles_from_role_dicts(
+                        metadata_ref.get('roles', {}), True)
+                except exception.MetadataNotFound:
+                    # no group grant, skip
+                    pass
+
+            return role_list
+
+        if not user_id or not project_id:
+            return []
+
+        project_ref = self.get_project(project_id)
+        group_role_list = _get_group_project_inherited_roles(user_id,
+                                                             project_ref)
+
+        if project_ref.get("parent_project_id") is None:
+            return group_role_list
+
+        return list(set(
+            group_role_list + self._get_inherited_roles_for_group_and_project(
+                user_id, project_ref.get("parent_project_id"))))
+
+    def _get_inherited_roles_for_user_and_project(self, user_id, project_id):
+
+        def _get_user_project_inherited_roles(user_id, project_ref):
+            role_list = []
+            try:
+                metadata_ref = self._get_metadata(user_id=user_id,
+                                                  tenant_id=project_ref['id'])
+                role_list += self._roles_from_role_dicts(
+                    metadata_ref.get('roles', {}), True)
+            except exception.MetadataNotFound:
+                pass
+
+            return role_list
+
+        if not user_id or not project_id:
+            return []
+
+        project_ref = self.get_project(project_id)
+        user_role_list = _get_user_project_inherited_roles(user_id,
+                                                           project_ref)
+
+        if project_ref.get("parent_project_id") is None:
+            return user_role_list
+
+        return list(set(
+            user_role_list + self._get_inherited_roles_for_user_and_project(
+                user_id, project_ref.get("parent_project_id"))))
+
     def get_roles_for_user_and_project(self, user_id, tenant_id):
         """Get the roles associated with a user within given project.
 
@@ -189,14 +248,33 @@ class Manager(manager.Manager):
 
         """
         def _get_group_project_roles(user_id, project_ref):
-            # TODO(morganfainberg): Implement a way to get only group_ids
-            # instead of the more expensive to_dict() call for each record.
-            group_ids = [group['id'] for group in
-                         self.identity_api.list_groups_for_user(user_id)]
-            return self.driver.get_group_project_roles(
-                group_ids,
-                project_ref['id'],
-                project_ref['domain_id'])
+            role_list = []
+            group_refs = self.identity_api.list_groups_for_user(user_id)
+            for x in group_refs:
+                try:
+                    metadata_ref = self._get_metadata(
+                        group_id=x['id'], tenant_id=project_ref['id'])
+                    role_list += self._roles_from_role_dicts(
+                        metadata_ref.get('roles', {}), False)
+                    role_list += self._roles_from_role_dicts(
+                        metadata_ref.get('roles', {}), True)
+                except exception.MetadataNotFound:
+                    # no group grant, skip
+                    pass
+
+                if CONF.os_inherit.enabled:
+                    # Now get any inherited group roles for the owning domain
+                    try:
+                        metadata_ref = self._get_metadata(
+                            group_id=x['id'],
+                            domain_id=project_ref['domain_id'])
+                        role_list += self._roles_from_role_dicts(
+                            metadata_ref.get('roles', {}), True)
+                    except (exception.MetadataNotFound,
+                            exception.NotImplemented):
+                        pass
+
+            return role_list
 
         def _get_user_project_roles(user_id, project_ref):
             role_list = []
@@ -205,6 +283,8 @@ class Manager(manager.Manager):
                                                   tenant_id=project_ref['id'])
                 role_list = self._roles_from_role_dicts(
                     metadata_ref.get('roles', {}), False)
+                role_list += self._roles_from_role_dicts(
+                    metadata_ref.get('roles', {}), True)
             except exception.MetadataNotFound:
                 pass
 
@@ -223,6 +303,13 @@ class Manager(manager.Manager):
         project_ref = self.get_project(tenant_id)
         user_role_list = _get_user_project_roles(user_id, project_ref)
         group_role_list = _get_group_project_roles(user_id, project_ref)
+
+        if project_ref.get("parent_project_id"):
+            user_role_list += self._get_inherited_roles_for_user_and_project(
+                user_id, project_ref.get("parent_project_id"))
+            group_role_list += self._get_inherited_roles_for_group_and_project(
+                user_id, project_ref.get("parent_project_id"))
+
         # Use set() to process the list to remove any duplicates
         return list(set(user_role_list + group_role_list))
 
@@ -481,6 +568,18 @@ class Manager(manager.Manager):
     def list_user_projects(self, user_id, hints=None):
         return self.driver.list_user_projects(
             user_id, hints or driver_hints.Hints())
+
+    # NOTE(tellesnobrega): get_project_hierarchy is actually an internal
+    # method and not exposed via the API. Therefore there is no need to
+    # support driver hints for it.
+    def get_project_hierarchy(self, project_id):
+        return self.driver.get_project_hierarchy(project_id)
+
+    def list_grants_from_multiple_targets(self, context, user_id=None,
+                                          group_id=None, targets_ids=None,
+                                          inherited_to_projects=False):
+        return self.driver.list_grants_from_multiple_targets(
+            context, user_id, group_id, targets_ids, inherited_to_projects)
 
     @cache.on_arguments(should_cache_fn=SHOULD_CACHE,
                         expiration_time=EXPIRATION_TIME)
@@ -761,6 +860,20 @@ class Driver(object):
         raise exception.NotImplemented()  # pragma: no cover
 
     @abc.abstractmethod
+    def list_grants_from_multiple_targets(self, context, user_id=None,
+                                          group_id=None, targets_ids=None,
+                                          inherited_to_projects=False):
+        """Lists assignments/grants for multiple targets.
+
+        :raises: keystone.exception.UserNotFound,
+                 keystone.exception.GroupNotFound,
+                 keystone.exception.TargetNotFound,
+                 keystone.exception.RoleNotFound
+
+        """
+        raise exception.NotImplemented()
+
+    @abc.abstractmethod
     def get_grant(self, role_id, user_id=None, group_id=None,
                   domain_id=None, project_id=None,
                   inherited_to_projects=False):
@@ -905,6 +1018,7 @@ class Driver(object):
         raise exception.NotImplemented()  # pragma: no cover
 
     @abc.abstractmethod
+
     def list_project_parents(self, project_id):
         """List all parents from a project by its ID.
 
@@ -928,6 +1042,7 @@ class Driver(object):
     def is_leaf_project(self, project_id):
         """Checks if a project is a leaf in the hierarchy.
 
+        :returns: project_ref
         :raises: keystone.exception.ProjectNotFound
 
         """

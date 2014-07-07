@@ -56,6 +56,18 @@ class Assignment(keystone_assignment.Driver):
                 raise exception.ProjectNotFound(project_id=tenant_name)
             return project_ref.to_dict()
 
+    def get_project_hierarchy(self, tenant_id):
+        with sql.transaction() as session:
+            tenant = self._get_project(session, tenant_id).to_dict()
+            hierarchy = tenant['id']
+            while tenant['parent_project_id'] is not None:
+                parent_tenant = self._get_project(
+                    session, tenant['parent_project_id']).to_dict()
+                # NOTE Keep compatible with Vishy's code
+                hierarchy = parent_tenant['id'] + '.' + hierarchy
+                tenant = parent_tenant
+            return hierarchy
+
     def list_user_ids_for_project(self, tenant_id):
         with sql.transaction() as session:
             self._get_project(session, tenant_id)
@@ -105,9 +117,7 @@ class Assignment(keystone_assignment.Driver):
         for assignment in refs:
             role_ref = {}
             role_ref['id'] = assignment.role_id
-            if assignment.inherited and (
-                    assignment.type == AssignmentType.USER_DOMAIN or
-                    assignment.type == AssignmentType.GROUP_DOMAIN):
+            if assignment.inherited:
                 role_ref['inherited_to'] = 'projects'
             metadata_ref['roles'].append(role_ref)
 
@@ -141,10 +151,6 @@ class Assignment(keystone_assignment.Driver):
             if project_id:
                 self._get_project(session, project_id)
 
-            if project_id and inherited_to_projects:
-                msg = _('Inherited roles can only be assigned to domains')
-                raise exception.Conflict(type='role grant', details=msg)
-
         type = calculate_type(user_id, group_id, project_id, domain_id)
         try:
             with sql.transaction() as session:
@@ -167,21 +173,55 @@ class Assignment(keystone_assignment.Driver):
             if project_id:
                 self._get_project(session, project_id)
 
-            q = session.query(Role).join(RoleAssignment)
-            q = q.filter(RoleAssignment.actor_id == (user_id or group_id))
-            q = q.filter(RoleAssignment.target_id == (project_id or domain_id))
-            q = q.filter(RoleAssignment.inherited == inherited_to_projects)
-            q = q.filter(Role.id == RoleAssignment.role_id)
+            q = self._build_grant_filter(
+                    session, None, user_id, group_id, domain_id, project_id,
+                    None)
+
+            grants = [x.to_dict() for x in q.all()]
+
+            if inherited_to_projects and project_id:
+                hierarchy = self.get_project_hierarchy(project_id).split('.') if project_id else []
+                hierarchy.append(self.get_project(project_id)['domain_id'] if project_id else domain_id)
+                q = self._build_grant_filter_multiple_targets(
+                    session, None, user_id or group_id, hierarchy,
+                    True)
+                grants += [x.to_dict() for x in q.all()]
+
+            roles_ids=[x['role_id'] for x in grants]
+            q = session.query(Role)
+            q = q.filter(Role.id.in_(roles_ids))
+
             return [x.to_dict() for x in q.all()]
+
+    def list_grants_from_multiple_targets(self, context, user_id=None,
+                                          group_id=None, targets_ids=None,
+                                          inherited_to_projects=False):
+        with sql.transaction() as session:
+            q = session.query(RoleAssignment)
+            q = q.filter_by(actor_id=user_id or group_id)
+            q = q.filter(RoleAssignment.target_id.in_(targets_ids))
+            q = q.filter_by(inherited=inherited_to_projects)
+
+            roles_ids = [x.role_id for x in q.all()]
+
+            q = session.query(Role)
+            q = q.filter(Role.id.in_(roles_ids))
+
+            return [x.to_dict() for x in q.all()]
+
+    def _build_grant_filter_multiple_targets(self, session, role_id, actor_id,
+                            targets_ids, inherited_to_projects):
+        q = session.query(RoleAssignment)
+        q = q.filter_by(actor_id=actor_id)
+        q = q.filter(RoleAssignment.target_id.in_(targets_ids))
+        q = q.filter_by(role_id=role_id) if role_id else q
+        q = q.filter_by(inherited=inherited_to_projects) if inherited_to_projects is not None else q
+        return q
 
     def _build_grant_filter(self, session, role_id, user_id, group_id,
                             domain_id, project_id, inherited_to_projects):
-        q = session.query(RoleAssignment)
-        q = q.filter_by(actor_id=user_id or group_id)
-        q = q.filter_by(target_id=project_id or domain_id)
-        q = q.filter_by(role_id=role_id)
-        q = q.filter_by(inherited=inherited_to_projects)
-        return q
+        return self._build_grant_filter_multiple_targets(session, role_id, user_id or group_id,
+            [domain_id] if domain_id else [project_id], inherited_to_projects)
 
     def get_grant(self, role_id, user_id=None, group_id=None,
                   domain_id=None, project_id=None,
@@ -196,12 +236,24 @@ class Assignment(keystone_assignment.Driver):
             try:
                 q = self._build_grant_filter(
                     session, role_id, user_id, group_id, domain_id, project_id,
-                    inherited_to_projects)
+                    False)
                 q.one()
-            except sql.NotFound:
-                raise exception.RoleNotFound(role_id=role_id)
 
-            return role_ref.to_dict()
+                return role_ref.to_dict()
+            except sql.NotFound:
+                if inherited_to_projects:
+                    hierarchy = self.get_project_hierarchy(project_id).split('.') if project_id else []
+                    hierarchy.append(self.get_project(project_id)['domain_id'] if project_id else domain_id)
+                    try:
+                        q = self._build_grant_filter_multiple_targets(
+                            session, role_id, user_id or group_id, hierarchy,
+                            True)
+                        q.first()
+
+                        return role_ref.to_dict()
+                    except sql.NotFound:
+                        pass
+                raise exception.RoleNotFound(role_id=role_id)
 
     def delete_grant(self, role_id, user_id=None, group_id=None,
                      domain_id=None, project_id=None,
@@ -272,11 +324,14 @@ class Assignment(keystone_assignment.Driver):
             # add in all the projects in that domain.
 
             domain_ids = set()
+            parent_project_ids = set()
             for assignment in assignments:
                 if ((assignment.type == AssignmentType.USER_DOMAIN or
                     assignment.type == AssignmentType.GROUP_DOMAIN) and
                         assignment.inherited):
                     domain_ids.add(assignment.target_id)
+                elif assignment.inherited:
+                    parent_project_ids.add(assignment.target_id)
 
             # Get the projects that are owned by all of these domains and
             # add them in to the project id list
@@ -286,6 +341,11 @@ class Assignment(keystone_assignment.Driver):
                 query = query.filter(Project.domain_id.in_(domain_ids))
                 for project_ref in query.all():
                     project_ids.add(project_ref.id)
+            if parent_project_ids:
+                for parent_id in parent_project_ids:
+                    for child_ref in self._get_children_projects(session,
+                                                                 parent_id):
+                        project_ids.add(child_ref.id)
 
             return _project_ids_to_dicts(session, project_ids)
 
@@ -454,6 +514,7 @@ class Assignment(keystone_assignment.Driver):
         tenant['name'] = clean.project_name(tenant['name'])
         with sql.transaction() as session:
             tenant_ref = Project.from_dict(tenant)
+            tenant_ref.name = tenant['name']
             session.add(tenant_ref)
             return tenant_ref.to_dict()
 

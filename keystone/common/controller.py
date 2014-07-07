@@ -312,14 +312,6 @@ class V3Controller(wsgi.Application):
         return '%s/%s/%s' % (endpoint, 'v3', path.lstrip('/'))
 
     @classmethod
-    def full_url(cls, context, path=None):
-        url = cls.base_url(context, path)
-        if context['environment'].get('QUERY_STRING'):
-            url = '%s?%s' % (url, context['environment']['QUERY_STRING'])
-
-        return url
-
-    @classmethod
     def _add_self_referential_link(cls, context, ref):
         ref.setdefault('links', {})
         ref['links']['self'] = cls.base_url(context) + '/' + ref['id']
@@ -362,7 +354,7 @@ class V3Controller(wsgi.Application):
         container = {cls.collection_name: refs}
         container['links'] = {
             'next': None,
-            'self': cls.full_url(context, path=context['path']),
+            'self': cls.base_url(context, path=context['path']),
             'previous': None}
 
         if list_limited:
@@ -573,7 +565,7 @@ class V3Controller(wsgi.Application):
         try:
             token_ref = self.token_api.get_token(context['token_id'])
             token = token_ref['token_data']['token']
-        except KeyError:
+        except exception.KeyError:
             raise exception.ValidationError(
                 _('domain_id is required as part of entity'))
         except exception.TokenNotFound:
@@ -603,7 +595,7 @@ class V3Controller(wsgi.Application):
         # worth the duplication of state
         try:
             token_ref = self.token_api.get_token(context['token_id'])
-        except KeyError:
+        except exception.KeyError:
             # This might happen if we use the Admin token, for instance
             raise exception.ValidationError(
                 _('A domain-scoped token must be used'))
