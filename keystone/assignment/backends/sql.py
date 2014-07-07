@@ -63,7 +63,6 @@ class Assignment(keystone_assignment.Driver):
             while tenant['parent_project_id'] is not None:
                 parent_tenant = self._get_project(
                     session, tenant['parent_project_id']).to_dict()
-                # NOTE Keep compatible with Vishy's code
                 hierarchy = parent_tenant['id'] + '.' + hierarchy
                 tenant = parent_tenant
             return hierarchy
