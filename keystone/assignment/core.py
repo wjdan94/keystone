@@ -107,6 +107,11 @@ class Manager(manager.Manager):
 
     @notifications.deleted(_PROJECT)
     def delete_project(self, tenant_id):
+        if not self.driver.is_leaf_project(tenant_id):
+            raise exception.ForbiddenAction(
+                action=_('cannot delete a project that is not a leaf '
+                         'in the hierarchy.'))
+
         project = self.driver.get_project(tenant_id)
         user_ids = self.list_user_ids_for_project(tenant_id)
         self.token_api.delete_tokens_for_users(user_ids, project_id=tenant_id)
@@ -868,6 +873,15 @@ class Driver(object):
         """Get a project hierarchy by ID.
 
         :returns: project_ref
+        :raises: keystone.exception.ProjectNotFound
+
+        """
+        raise exception.NotImplemented()
+
+    @abc.abstractmethod
+    def is_leaf_project(self, project_id):
+        """Checks if a project is a leaf in the hierarchy.
+
         :raises: keystone.exception.ProjectNotFound
 
         """
