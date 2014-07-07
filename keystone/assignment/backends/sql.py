@@ -56,6 +56,42 @@ class Assignment(keystone_assignment.Driver):
                 raise exception.ProjectNotFound(project_id=tenant_name)
             return project_ref.to_dict()
 
+    def _get_immediate_children(self, session, project_id):
+        query = session.query(Project)
+        query = query.filter_by(parent_project_id=project_id)
+        project_refs = query.all()
+        return [project_ref.to_dict() for project_ref in project_refs]
+
+    def list_project_parents(self, project_id):
+        with sql.transaction() as session:
+            project = self._get_project(session, project_id).to_dict()
+            hierarchy = []
+            while project['parent_project_id'] is not None:
+                parent_project = self._get_project(
+                    session, project['parent_project_id']).to_dict()
+                hierarchy.append(parent_project)
+                project = parent_project
+            return hierarchy
+
+    def list_project_children(self, project_id):
+        with sql.transaction() as session:
+            project = self._get_project(session, project_id).to_dict()
+            children = []
+            queue = [project]
+            while queue:
+                project = queue.pop()
+                project_children = self._get_immediate_children(session,
+                                                                project['id'])
+                queue += project_children
+                children += project_children
+
+            return children
+
+    def is_leaf_project(self, project_id):
+        with sql.transaction() as session:
+            project_refs = self._get_immediate_children(session, project_id)
+            return not project_refs
+
     def list_user_ids_for_project(self, tenant_id):
         with sql.transaction() as session:
             self._get_project(session, tenant_id)
@@ -414,12 +450,27 @@ class Assignment(keystone_assignment.Driver):
             refs = session.query(RoleAssignment).all()
             return [denormalize_role(ref) for ref in refs]
 
+    def _get_project_depth(self, tenant_id):
+        return (len(self.list_project_parents(tenant_id)) + 1)
+
     # CRUD
     @sql.handle_conflicts(conflict_type='project')
     def create_project(self, tenant_id, tenant):
         tenant['name'] = clean.project_name(tenant['name'])
         with sql.transaction() as session:
+            # Verify if the level doesn't exceed the maximum tree depth
+            # configured on keystone.conf
+            parent_project_id = tenant.get('parent_project_id', None)
+            if parent_project_id:
+                if (self._get_project_depth(parent_project_id) >=
+                        CONF.max_project_tree_depth):
+                    msg = _("Project cannot be created: "
+                            "max project-tree depth exceeded "
+                            "on this branch.")
+                    raise exception.Error(message=msg)
+
             tenant_ref = Project.from_dict(tenant)
+            tenant_ref.name = tenant['name']
             session.add(tenant_ref)
             return tenant_ref.to_dict()
 
@@ -431,6 +482,19 @@ class Assignment(keystone_assignment.Driver):
         with sql.transaction() as session:
             tenant_ref = self._get_project(session, tenant_id)
             old_project_dict = tenant_ref.to_dict()
+            # if moving, check if the tree depth on the destiny allows moving
+            new_parent_id = tenant.get('parent_project_id', None)
+            if new_parent_id:
+                old_parent_id = old_project_dict.get('parent_project_id', None)
+
+                if (old_parent_id != new_parent_id and
+                        self._get_project_depth(new_parent_id) >=
+                        CONF.max_project_tree_depth):
+                    msg = _("Project cannot be updated: "
+                            "max project-tree depth exceeded "
+                            "on destiny's branch.")
+                    raise exception.Error(message=msg)
+
             for k in tenant:
                 old_project_dict[k] = tenant[k]
             new_project = Project.from_dict(old_project_dict)
@@ -585,7 +649,8 @@ class Domain(sql.ModelBase, sql.DictBase):
 
 class Project(sql.ModelBase, sql.DictBase):
     __tablename__ = 'project'
-    attributes = ['id', 'name', 'domain_id', 'description', 'enabled']
+    attributes = ['id', 'name', 'domain_id', 'description', 'enabled',
+                  'parent_project_id']
     id = sql.Column(sql.String(64), primary_key=True)
     name = sql.Column(sql.String(64), nullable=False)
     domain_id = sql.Column(sql.String(64), sql.ForeignKey('domain.id'),
@@ -593,6 +658,7 @@ class Project(sql.ModelBase, sql.DictBase):
     description = sql.Column(sql.Text())
     enabled = sql.Column(sql.Boolean)
     extra = sql.Column(sql.JsonBlob())
+    parent_project_id = sql.Column(sql.String(64))
     # Unique constraint across two columns to create the separation
     # rather than just only 'name' being unique
     __table_args__ = (sql.UniqueConstraint('domain_id', 'name'), {})
