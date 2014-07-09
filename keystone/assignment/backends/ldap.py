@@ -54,6 +54,9 @@ class Assignment(assignment.Driver):
     def get_project(self, tenant_id):
         return self._set_default_domain(self.project.get(tenant_id))
 
+    def get_project_hierarchy(self, tenant_name, domain_id):
+        return tenant_name
+
     def list_projects(self, hints):
         return self._set_default_domain(self.project.get_all())
 

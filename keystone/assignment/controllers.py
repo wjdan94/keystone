@@ -850,7 +850,7 @@ class RoleAssignmentV3(controller.V3Controller):
     def _filter_inherited(self, entry):
         if ('inherited_to_projects' in entry and
                 not CONF.os_inherit.enabled):
-            return False
+                return False
         else:
             return True
 

@@ -76,6 +76,15 @@ class Assignment(kvs.Base, assignment.Driver):
                 return False
         return True
 
+    def get_project_hierarchy(self, project_id):
+        project_ref = self.get_project(project_id)
+        hierarchy = project_ref['id']
+        while project_ref['parent_project_id'] is not None:
+            parent_project = self.get_project(project_ref['parent_project_id'])
+            hierarchy = parent_project['id'] + '.' + hierarchy
+            project_ref = parent_project
+        return hierarchy
+
     def get_project_by_name(self, tenant_name, domain_id):
         try:
             return self.db.get('tenant_name-%s' % tenant_name)

@@ -419,12 +419,11 @@ class Assignment(keystone_assignment.Driver):
         tenant['name'] = clean.project_name(tenant['name'])
         with sql.transaction() as session:
             tenant_ref = Project.from_dict(tenant)
-            temp_name = ''
             if tenant['parent_project_id'] is not None:
                 parent_tenant = self._get_project(session,
                                                   tenant['parent_project_id'])
-                temp_name = parent_tenant['name'] + '.' + tenant['name']
-            tenant_ref.name = temp_name
+                tenant['name'] = parent_tenant['name'] + '.' + tenant['name']
+            tenant_ref.name = tenant['name']
             session.add(tenant_ref)
             return tenant_ref.to_dict()
 
