@@ -2459,7 +2459,8 @@ class IdentityTests(object):
         project = {'id': uuid.uuid4().hex,
                    'name': uuid.uuid4().hex,
                    'domain_id': DEFAULT_DOMAIN_ID,
-                   'enabled': True}
+                   'enabled': True,
+                   'parent_project_id': None}
         self.assignment_api.create_project(project['id'], project)
 
         # Add a description attribute.
@@ -2474,7 +2475,8 @@ class IdentityTests(object):
         project = {'id': uuid.uuid4().hex,
                    'name': uuid.uuid4().hex,
                    'domain_id': DEFAULT_DOMAIN_ID,
-                   'enabled': True}
+                   'enabled': True,
+                   'parent_project_id': None}
         self.assignment_api.create_project(project['id'], project)
 
         # Add a description attribute.
