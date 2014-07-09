@@ -78,13 +78,6 @@ class Assignment(kvs.Base, assignment.Driver):
             project_ref = parent_project
         return hierarchy
 
-    def is_leaf_project(self, project_id):
-        project_refs = self.list_projects()
-        for ref in project_refs:
-            if ref['parent_project_id'] == project_id:
-                return False
-        return True
-
     def get_project_by_name(self, tenant_name, domain_id):
         try:
             return self.db.get('tenant_name-%s' % tenant_name)
