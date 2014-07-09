@@ -46,12 +46,12 @@ def downgrade(migrate_engine):
     meta = sql.MetaData()
     meta.bind = migrate_engine
 
+    project_table = sql.Table('project', meta, autoload=True)
+    project_table.drop_column('parent_project_id')
+
     # SQLite does not support constraints, and querying the constraints
     # raises an exception
     if migrate_engine.name == 'sqlite':
         return
 
     migration_helpers.remove_constraints(list_constraints(migrate_engine))
-
-    project_table = sql.Table('project', meta, autoload=True)
-    project_table.drop_column('parent_project_id')
