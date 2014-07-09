@@ -70,7 +70,7 @@ class Assignment(kvs.Base, assignment.Driver):
         return [ref for ref in project_refs if domain_id == ref['domain_id']]
 
     def is_leaf_project(self, project_id):
-        project_refs = self.list_projects()
+        project_refs = self._build_project_refs()
         for ref in project_refs:
             if ref['parent_project_id'] == project_id:
                 return False

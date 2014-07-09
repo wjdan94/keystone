@@ -60,6 +60,9 @@ class Assignment(assignment.Driver):
     def list_projects(self, hints):
         return self._set_default_domain(self.project.get_all())
 
+    def is_leaf_project(self, project_id):
+        return True
+
     def list_projects_in_domain(self, domain_id):
         # We don't support multiple domains within this driver, so ignore
         # any domain specified
