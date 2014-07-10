@@ -63,11 +63,9 @@ class Assignment(keystone_assignment.Driver):
             while tenant['parent_project_id'] is not None:
                 parent_tenant = self._get_project(
                     session, tenant['parent_project_id']).to_dict()
-                '''hierarchy = parent_tenant['id'] + '.' + hierarchy'''
                 # NOTE Keep compatible with Vishy's code
-                hierarchy = parent_tenant['id'] + hierarchy
+                hierarchy = parent_tenant['id'] + '.' + hierarchy
                 tenant = parent_tenant
-            '''hierarchy = "openstack." + hierarchy'''
             return hierarchy
 
     def list_user_ids_for_project(self, tenant_id):
