@@ -1056,3 +1056,22 @@ class Driver(object):
         """
         if domain_id != CONF.identity.default_domain_id:
             raise exception.DomainNotFound(domain_id=domain_id)
+
+    def _validate_root_parent_project(self, ref):
+        """Validate that the root parent project is correctly specified.
+
+        """
+        ref = ref.copy()
+        parent_project_id = ref.pop('parent_project_id', None)
+        self._validate_root_parent_project_id(parent_project_id)
+        return ref
+
+    def _validate_root_parent_project_id(self, parent_project_id):
+        """Validate that the parent project ID specified belongs to the root
+        parent project.
+
+        """
+        # root parent_project_id is None
+        if parent_project_id:
+            raise exception.InvalidRootParentProject(
+                parent_project_id=parent_project_id)

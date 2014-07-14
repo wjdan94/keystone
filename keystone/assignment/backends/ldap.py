@@ -76,6 +76,7 @@ class Assignment(assignment.Driver):
     def create_project(self, tenant_id, tenant):
         self.project.check_allow_create()
         tenant = self._validate_default_domain(tenant)
+        tenant = self._validate_root_parent_project(tenant)
         tenant['name'] = clean.project_name(tenant['name'])
         data = tenant.copy()
         if 'id' not in data or data['id'] is None:
@@ -87,6 +88,7 @@ class Assignment(assignment.Driver):
     def update_project(self, tenant_id, tenant):
         self.project.check_allow_update()
         tenant = self._validate_default_domain(tenant)
+        tenant = self._validate_root_parent_project(tenant)
         if 'name' in tenant:
             tenant['name'] = clean.project_name(tenant['name'])
         return self._set_missing_attr(self.project.update(tenant_id, tenant))
