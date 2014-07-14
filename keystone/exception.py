@@ -191,6 +191,12 @@ class ImmutableAttributeError(Forbidden):
                        "'%(attributes)s' in target %(target)s")
 
 
+class CrossBackendNotAllowed(Forbidden):
+    message_format = _("Group membership across backend boundaries is not "
+                       "allowed, group in question is %(group_id)s, "
+                       "user is %(user_id)s")
+
+
 class NotFound(Error):
     message_format = _("Could not find: %(target)s")
     code = 404
@@ -274,11 +280,24 @@ class FederatedProtocolNotFound(NotFound):
                        " Identity Provider: %(idp_id)s")
 
 
+class PublicIDNotFound(NotFound):
+    # This is used internally and mapped to either User/GroupNotFound or,
+    # Assertion before the exception leaves Keystone.
+    message_format = "%(id)s"
+
+
 class Conflict(Error):
     message_format = _("Conflict occurred attempting to store %(type)s -"
                        " %(details)s")
     code = 409
     title = 'Conflict'
+
+
+class InvalidRootParentProject(Error):
+    message_format = _("%(parent_project_id)s is not the root project")
+
+    code = 400
+    title = 'Bad Request'
 
 
 class RequestTooLarge(Error):

@@ -279,8 +279,7 @@ class Manager(manager.Manager):
                                                     project_id=tenant_id)
 
             except exception.RoleNotFound:
-                LOG.debug(_("Removing role %s failed because it does not "
-                            "exist."),
+                LOG.debug("Removing role %s failed because it does not exist.",
                           role_id)
 
     # TODO(henry-nash): We might want to consider list limiting this at some
@@ -385,9 +384,9 @@ class Manager(manager.Manager):
         Users: Reference domains for grants
 
         """
-        user_refs = self.identity_api.list_users()
+        user_refs = self.identity_api.list_users(domain_scope=domain_id)
         proj_refs = self.list_projects()
-        group_refs = self.identity_api.list_groups()
+        group_refs = self.identity_api.list_groups(domain_scope=domain_id)
 
         # First delete the projects themselves
         for project in proj_refs:
@@ -395,9 +394,9 @@ class Manager(manager.Manager):
                 try:
                     self.delete_project(project['id'])
                 except exception.ProjectNotFound:
-                    LOG.debug(_('Project %(projectid)s not found when '
-                                'deleting domain contents for %(domainid)s, '
-                                'continuing with cleanup.'),
+                    LOG.debug(('Project %(projectid)s not found when '
+                               'deleting domain contents for %(domainid)s, '
+                               'continuing with cleanup.'),
                               {'projectid': project['id'],
                                'domainid': domain_id})
 
@@ -405,24 +404,22 @@ class Manager(manager.Manager):
             # Cleanup any existing groups.
             if group['domain_id'] == domain_id:
                 try:
-                    self.identity_api.delete_group(group['id'],
-                                                   domain_scope=domain_id)
+                    self.identity_api.delete_group(group['id'])
                 except exception.GroupNotFound:
-                    LOG.debug(_('Group %(groupid)s not found when deleting '
-                                'domain contents for %(domainid)s, continuing '
-                                'with cleanup.'),
+                    LOG.debug(('Group %(groupid)s not found when deleting '
+                               'domain contents for %(domainid)s, continuing '
+                               'with cleanup.'),
                               {'groupid': group['id'], 'domainid': domain_id})
 
         # And finally, delete the users themselves
         for user in user_refs:
             if user['domain_id'] == domain_id:
                 try:
-                    self.identity_api.delete_user(user['id'],
-                                                  domain_scope=domain_id)
+                    self.identity_api.delete_user(user['id'])
                 except exception.UserNotFound:
-                    LOG.debug(_('User %(userid)s not found when '
-                                'deleting domain contents for %(domainid)s, '
-                                'continuing with cleanup.'),
+                    LOG.debug(('User %(userid)s not found when '
+                               'deleting domain contents for %(domainid)s, '
+                               'continuing with cleanup.'),
                               {'userid': user['id'],
                                'domainid': domain_id})
 
@@ -538,7 +535,7 @@ class Manager(manager.Manager):
                                 user_id=user['id'], role_id=role_id,
                                 domain_id=domain_id, project_id=project_id)
             except exception.GroupNotFound:
-                LOG.debug(_('Group %s not found, no tokens to invalidate.'),
+                LOG.debug('Group %s not found, no tokens to invalidate.',
                           group_id)
 
         self.driver.delete_grant(role_id, user_id, group_id, domain_id,
@@ -581,8 +578,8 @@ class Manager(manager.Manager):
                         target = _('Domain (%s)') % assignment['domain_id']
                     else:
                         target = _('Unknown Target')
-                    msg = _('Group (%(group)s), referenced in assignment '
-                            'for %(target)s, not found - ignoring.')
+                    msg = ('Group (%(group)s), referenced in assignment '
+                           'for %(target)s, not found - ignoring.')
                     LOG.debug(msg, {'group': assignment['group_id'],
                                     'target': target})
                     continue
@@ -1073,3 +1070,22 @@ class Driver(object):
         """
         if domain_id != CONF.identity.default_domain_id:
             raise exception.DomainNotFound(domain_id=domain_id)
+
+    def _validate_root_parent_project(self, ref):
+        """Validate that the root parent project is correctly specified.
+
+        """
+        ref = ref.copy()
+        parent_project_id = ref.pop('parent_project_id', None)
+        self._validate_root_parent_project_id(parent_project_id)
+        return ref
+
+    def _validate_root_parent_project_id(self, parent_project_id):
+        """Validate that the parent project ID specified belongs to the root
+        parent project.
+
+        """
+        # root parent_project_id is None
+        if parent_project_id:
+            raise exception.InvalidRootParentProject(
+                parent_project_id=parent_project_id)
