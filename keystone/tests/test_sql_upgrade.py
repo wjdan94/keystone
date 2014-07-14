@@ -82,7 +82,7 @@ INITIAL_TABLE_STRUCTURE = {
         'id', 'type', 'blob', 'extra',
     ],
     'project': [
-        'id', 'name', 'extra', 'description', 'enabled', 'domain_id', 'parent_project_id',
+        'id', 'name', 'extra', 'description', 'enabled', 'domain_id',
     ],
     'role': [
         'id', 'name', 'extra',

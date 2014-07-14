@@ -1028,6 +1028,18 @@ class Driver(object):
         """
         raise exception.NotImplemented()
 
+    def _set_parent_project(self, ref):
+        """If the parent project ID  has not been set, set it to None."""
+        if isinstance(ref, dict):
+            if 'parent_project_id' not in ref:
+                ref = ref.copy()
+                ref['parent_project_id'] = None
+            return ref
+        elif isinstance(ref, list):
+            return [self._set_parent_project(x) for x in ref]
+        else:
+            raise ValueError(_('Expected dict or list: %s') % type(ref))
+
     # domain management functions for backends that only allow a single
     # domain.  currently, this is only LDAP, but might be used by PAM or other
     # backends as well.  This is used by both identity and assignment drivers.

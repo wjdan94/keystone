@@ -61,13 +61,11 @@ class Assignment(keystone_assignment.Driver):
             tenant = self._get_project(session, tenant_id).to_dict()
             hierarchy = tenant['id']
             while tenant['parent_project_id'] is not None:
-                parent_tenant = self._get_project(session,
-                    tenant['parent_project_id']).to_dict()
-                '''hierarchy = parent_tenant['id'] + '.' + hierarchy'''
+                parent_tenant = self._get_project(
+                    session, tenant['parent_project_id']).to_dict()
                 # NOTE Keep compatible with Vishy's code
-                hierarchy = parent_tenant['id'] + hierarchy
+                hierarchy = parent_tenant['id'] + '.' + hierarchy
                 tenant = parent_tenant
-            '''hierarchy = "openstack." + hierarchy'''
             return hierarchy
 
     def is_leaf_project(self, project_id):
@@ -419,10 +417,6 @@ class Assignment(keystone_assignment.Driver):
         tenant['name'] = clean.project_name(tenant['name'])
         with sql.transaction() as session:
             tenant_ref = Project.from_dict(tenant)
-            if tenant['parent_project_id'] is not None:
-                parent_tenant = self._get_project(session,
-                                                  tenant['parent_project_id'])
-                tenant['name'] = parent_tenant['name'] + '.' + tenant['name']
             tenant_ref.name = tenant['name']
             session.add(tenant_ref)
             return tenant_ref.to_dict()
