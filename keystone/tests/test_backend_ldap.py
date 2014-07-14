@@ -1369,6 +1369,12 @@ class LDAPIdentity(BaseLDAPIdentity, tests.TestCase):
                           self.assignment_api.get_project,
                           project['id'])
 
+    def test_delete_hierarchical_leaf_project(self):
+        pass
+
+    def test_delete_hierarchical_not_leaf_project(self):
+        pass
+
     @tests.skip_if_cache_disabled('assignment')
     def test_cache_layer_project_crud(self):
         # NOTE(morganfainberg): LDAP implementation does not currently support

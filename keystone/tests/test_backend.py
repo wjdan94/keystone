@@ -2461,6 +2461,46 @@ class IdentityTests(object):
                           self.assignment_api.get_project,
                           project['id'])
 
+    def test_delete_hierarchical_leaf_project(self):
+        root_project = {'id': uuid.uuid4().hex,
+                        'name': uuid.uuid4().hex,
+                        'domain_id': DEFAULT_DOMAIN_ID,
+                        'parent_project_id': None}
+        self.assignment_api.create_project(root_project['id'], root_project)
+
+        leaf_project = {'id': uuid.uuid4().hex,
+                        'name': uuid.uuid4().hex,
+                        'domain_id': DEFAULT_DOMAIN_ID,
+                        'parent_project_id': root_project['id']}
+        self.assignment_api.create_project(leaf_project['id'], leaf_project)
+
+        self.assignment_api.delete_project(leaf_project['id'])
+        self.assertRaises(exception.NotFound,
+                          self.assignment_api.get_project,
+                          leaf_project['id'])
+
+        self.assignment_api.delete_project(root_project['id'])
+        self.assertRaises(exception.NotFound,
+                          self.assignment_api.get_project,
+                          root_project['id'])
+
+    def test_delete_hierarchical_not_leaf_project(self):
+        root_project = {'id': uuid.uuid4().hex,
+                        'name': uuid.uuid4().hex,
+                        'domain_id': DEFAULT_DOMAIN_ID,
+                        'parent_project_id': None}
+        self.assignment_api.create_project(root_project['id'], root_project)
+
+        leaf_project = {'id': uuid.uuid4().hex,
+                        'name': uuid.uuid4().hex,
+                        'domain_id': DEFAULT_DOMAIN_ID,
+                        'parent_project_id': root_project['id']}
+        self.assignment_api.create_project(leaf_project['id'], leaf_project)
+
+        self.assertRaises(exception.ForbiddenAction,
+                          self.assignment_api.delete_project,
+                          root_project['id'])
+
     def test_project_update_missing_attrs_with_a_value(self):
         # Creating a project with no description attribute.
         project = {'id': uuid.uuid4().hex,
