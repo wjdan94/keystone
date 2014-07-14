@@ -85,8 +85,8 @@ def validate_token_bind(context, token_ref):
             LOG.info(_("Kerberos bind authentication successful"))
 
         elif bind_mode == 'permissive':
-            LOG.debug(_("Ignoring unknown bind for permissive mode: "
-                        "{%(bind_type)s: %(identifier)s}"),
+            LOG.debug(("Ignoring unknown bind for permissive mode: "
+                       "{%(bind_type)s: %(identifier)s}"),
                       {'bind_type': bind_type, 'identifier': identifier})
         else:
             LOG.info(_("Couldn't verify unknown bind: "
@@ -178,7 +178,7 @@ class Application(BaseApplication):
         arg_dict = req.environ['wsgiorg.routing_args'][1]
         action = arg_dict.pop('action')
         del arg_dict['controller']
-        LOG.debug(_('arg_dict: %s'), arg_dict)
+        LOG.debug('arg_dict: %s', arg_dict)
 
         # allow middleware up the stack to provide context, params and headers.
         context = req.environ.get(CONTEXT_ENV, {})
@@ -199,6 +199,11 @@ class Application(BaseApplication):
 
         # TODO(termie): do some basic normalization on methods
         method = getattr(self, action)
+
+        # NOTE(morganfainberg): use the request method to normalize the
+        # response code between GET and HEAD requests. The HTTP status should
+        # be the same.
+        req_method = req.environ['REQUEST_METHOD'].upper()
 
         # NOTE(vish): make sure we have no unicode keys for py2.6.
         params = self._normalize_dict(params)
@@ -236,7 +241,8 @@ class Application(BaseApplication):
             return result
 
         response_code = self._get_response_code(req)
-        return render_response(body=result, status=response_code)
+        return render_response(body=result, status=response_code,
+                               method=req_method)
 
     def _get_response_code(self, req):
         req_method = req.environ['REQUEST_METHOD']
@@ -316,8 +322,8 @@ class Application(BaseApplication):
         """
         if ('token_id' not in context or
                 context.get('token_id') == CONF.admin_token):
-            LOG.debug(_('will not lookup trust as the request auth token is '
-                        'either absent or it is the system admin token'))
+            LOG.debug(('will not lookup trust as the request auth token is '
+                       'either absent or it is the system admin token'))
             return None
 
         try:
@@ -598,7 +604,7 @@ class ExtensionRouter(Router):
         return _factory
 
 
-def render_response(body=None, status=None, headers=None):
+def render_response(body=None, status=None, headers=None, method=None):
     """Forms a WSGI response."""
     if headers is None:
         headers = []
@@ -621,9 +627,25 @@ def render_response(body=None, status=None, headers=None):
                 headers.append(('Content-Type', 'application/json'))
         status = status or (200, 'OK')
 
-    return webob.Response(body=body,
+    resp = webob.Response(body=body,
                           status='%s %s' % status,
                           headerlist=headers)
+
+    if method == 'HEAD':
+        # NOTE(morganfainberg): HEAD requests should return the same status
+        # as a GET request and same headers (including content-type and
+        # content-length). The webob.Response object automatically changes
+        # content-length (and other headers) if the body is set to b''. Capture
+        # all headers and reset them on the response object after clearing the
+        # body. The body can only be set to a binary-type (not TextType or
+        # NoneType), so b'' is used here and should be compatible with
+        # both py2x and py3x.
+        stored_headers = resp.headers.copy()
+        resp.body = b''
+        for header, value in six.iteritems(stored_headers):
+            resp.headers[header] = value
+
+    return resp
 
 
 def render_exception(error, context=None, request=None, user_locale=None):
