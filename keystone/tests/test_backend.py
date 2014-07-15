@@ -3877,6 +3877,40 @@ class PolicyTests(object):
 
 class InheritanceTests(object):
 
+    def _enable_os_inherit_extension(self):
+        self.config_fixture.config(group='os_inherit', enabled=True)
+
+    def _create_random_domain(self):
+        domain = {'id': uuid.uuid4().hex, 'name': uuid.uuid4().hex}
+        self.assignment_api.create_domain(domain['id'], domain)
+        return domain
+
+    def _create_random_project(self, domain_id):
+        project = {'id': uuid.uuid4().hex, 'name': uuid.uuid4().hex,
+                    'domain_id': domain_id}
+        self.assignment_api.create_project(project['id'], project)
+        return project
+
+    def _create_random_user(self, domain_id):
+        user = {'name': uuid.uuid4().hex, 'domain_id': domain_id,
+                 'password': uuid.uuid4().hex, 'enabled': True}
+        user = self.identity_api.create_user(user)
+        return user
+
+    def _create_random_group(self, domain_id):
+        group = {'name': uuid.uuid4().hex, 'domain_id': domain_id}
+        group = self.identity_api.create_group(group)
+        return group
+
+    def _create_random_roles(self, number_of_roles):
+        role_list = []
+        for _ in range(number_of_roles):
+            role = {'id': uuid.uuid4().hex, 'name': uuid.uuid4().hex}
+            self.assignment_api.create_role(role['id'], role)
+            role_list.append(role)
+
+        return role_list
+
     def test_inherited_role_grants_for_user(self):
         """Test inherited user roles.
 
@@ -3896,20 +3930,11 @@ class InheritanceTests(object):
           inherited should not show up
 
         """
-        self.config_fixture.config(group='os_inherit', enabled=True)
-        role_list = []
-        for _ in range(3):
-            role = {'id': uuid.uuid4().hex, 'name': uuid.uuid4().hex}
-            self.assignment_api.create_role(role['id'], role)
-            role_list.append(role)
-        domain1 = {'id': uuid.uuid4().hex, 'name': uuid.uuid4().hex}
-        self.assignment_api.create_domain(domain1['id'], domain1)
-        user1 = {'name': uuid.uuid4().hex, 'domain_id': domain1['id'],
-                 'password': uuid.uuid4().hex, 'enabled': True}
-        user1 = self.identity_api.create_user(user1)
-        project1 = {'id': uuid.uuid4().hex, 'name': uuid.uuid4().hex,
-                    'domain_id': domain1['id']}
-        self.assignment_api.create_project(project1['id'], project1)
+        self._enable_os_inherit_extension()
+        role_list = self._create_random_roles(3)
+        domain1 = self._create_random_domain()
+        user1 = self._create_random_user(domain_id=domain1['id'])
+        project1 = self._create_random_project(domain_id=domain1['id'])
 
         roles_ref = self.assignment_api.list_grants(
             user_id=user1['id'],
@@ -3970,26 +3995,13 @@ class InheritanceTests(object):
           direct and two by virtue of inherited group roles
 
         """
-        self.config_fixture.config(group='os_inherit', enabled=True)
-        role_list = []
-        for _ in range(4):
-            role = {'id': uuid.uuid4().hex, 'name': uuid.uuid4().hex}
-            self.assignment_api.create_role(role['id'], role)
-            role_list.append(role)
-        domain1 = {'id': uuid.uuid4().hex, 'name': uuid.uuid4().hex}
-        self.assignment_api.create_domain(domain1['id'], domain1)
-        user1 = {'name': uuid.uuid4().hex, 'domain_id': domain1['id'],
-                 'password': uuid.uuid4().hex, 'enabled': True}
-        user1 = self.identity_api.create_user(user1)
-        group1 = {'name': uuid.uuid4().hex, 'domain_id': domain1['id'],
-                  'enabled': True}
-        group1 = self.identity_api.create_group(group1)
-        group2 = {'name': uuid.uuid4().hex, 'domain_id': domain1['id'],
-                  'enabled': True}
-        group2 = self.identity_api.create_group(group2)
-        project1 = {'id': uuid.uuid4().hex, 'name': uuid.uuid4().hex,
-                    'domain_id': domain1['id']}
-        self.assignment_api.create_project(project1['id'], project1)
+        self._enable_os_inherit_extension()
+        role_list = self._create_random_roles(4)
+        domain1 = self._create_random_domain()
+        user1 = self._create_random_user(domain_id=domain1['id'])
+        group1 = self._create_random_group(domain_id=domain1['id'])
+        group2 = self._create_random_group(domain_id=domain1['id'])
+        project1 = self._create_random_project(domain_id=domain1['id'])
 
         self.identity_api.add_user_to_group(user1['id'],
                                             group1['id'])
@@ -4047,18 +4059,11 @@ class InheritanceTests(object):
         - Get a list of projects for user, should return all three projects
 
         """
-        self.config_fixture.config(group='os_inherit', enabled=True)
-        domain = {'id': uuid.uuid4().hex, 'name': uuid.uuid4().hex}
-        self.assignment_api.create_domain(domain['id'], domain)
-        user1 = {'name': uuid.uuid4().hex, 'password': uuid.uuid4().hex,
-                 'domain_id': domain['id'], 'enabled': True}
-        user1 = self.identity_api.create_user(user1)
-        project1 = {'id': uuid.uuid4().hex, 'name': uuid.uuid4().hex,
-                    'domain_id': domain['id']}
-        self.assignment_api.create_project(project1['id'], project1)
-        project2 = {'id': uuid.uuid4().hex, 'name': uuid.uuid4().hex,
-                    'domain_id': domain['id']}
-        self.assignment_api.create_project(project2['id'], project2)
+        self._enable_os_inherit_extension()
+        domain = self._create_random_domain()
+        user1 = self._create_random_user(domain_id=domain['id'])
+        project1 = self._create_random_project(domain_id=domain['id'])
+        project2 = self._create_random_project(domain_id=domain['id'])
 
         # Create 2 grants, one on a project and one inherited grant
         # on the domain
@@ -4090,28 +4095,15 @@ class InheritanceTests(object):
           from the domain, plus the one separate project
 
         """
-        self.config_fixture.config(group='os_inherit', enabled=True)
-        domain = {'id': uuid.uuid4().hex, 'name': uuid.uuid4().hex}
-        self.assignment_api.create_domain(domain['id'], domain)
-        domain2 = {'id': uuid.uuid4().hex, 'name': uuid.uuid4().hex}
-        self.assignment_api.create_domain(domain2['id'], domain2)
-        project1 = {'id': uuid.uuid4().hex, 'name': uuid.uuid4().hex,
-                    'domain_id': domain['id']}
-        self.assignment_api.create_project(project1['id'], project1)
-        project2 = {'id': uuid.uuid4().hex, 'name': uuid.uuid4().hex,
-                    'domain_id': domain['id']}
-        self.assignment_api.create_project(project2['id'], project2)
-        project3 = {'id': uuid.uuid4().hex, 'name': uuid.uuid4().hex,
-                    'domain_id': domain2['id']}
-        self.assignment_api.create_project(project3['id'], project3)
-        project4 = {'id': uuid.uuid4().hex, 'name': uuid.uuid4().hex,
-                    'domain_id': domain2['id']}
-        self.assignment_api.create_project(project4['id'], project4)
-        user1 = {'name': uuid.uuid4().hex, 'password': uuid.uuid4().hex,
-                 'domain_id': domain['id'], 'enabled': True}
-        user1 = self.identity_api.create_user(user1)
-        group1 = {'name': uuid.uuid4().hex, 'domain_id': domain['id']}
-        group1 = self.identity_api.create_group(group1)
+        self._enable_os_inherit_extension()
+        domain = self._create_random_domain()
+        domain2 = self._create_random_domain()
+        project1 = self._create_random_project(domain_id=domain['id'])
+        project2 = self._create_random_project(domain_id=domain['id'])
+        project3 = self._create_random_project(domain_id=domain2['id'])
+        project4 = self._create_random_project(domain_id=domain2['id'])
+        user1 = self._create_random_user(domain_id=domain['id'])
+        group1 = self._create_random_group(domain_id=domain['id'])
         self.identity_api.add_user_to_group(user1['id'], group1['id'])
 
         # Create 4 grants:
