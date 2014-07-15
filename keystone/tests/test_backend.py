@@ -3920,15 +3920,26 @@ class InheritanceTests(object):
         Test Plan:
 
         - Enable OS-INHERIT extension
-        - Create 3 roles
-        - Create a domain, with a project and a user
+        - Create 5 roles
+        - Create a domain, with a project, a subproject and a user
         - Check no roles yet exit
-        - Assign a direct user role to the project and a (non-inherited)
-          user role to the domain
-        - Get a list of effective roles - should only get the one direct role
+        - Assign direct user roles to the project the subproject and the domain
+        - Get a list of effective roles on the project - should only get the
+          direct role
+        - Get a list of effective roles on the subproject - should only get the
+          direct role
         - Now add an inherited user role to the domain
-        - Get a list of effective roles - should have two roles, one
-          direct and one by virtue of the inherited user role
+        - Get a list of effective roles on the project - should have two roles,
+          one direct and one by virtue of the inherited user role
+        - Get a list of effective roles on the subproject - should have two
+          roles, one direct and one by virtue of the inherited user role
+        - Now add an inherited user role to the project
+        - Get a list of effective roles on the project - should have three
+          roles: one direct, one by virtue of the domain inherited user role and
+          one by virtue of the project inherited user role
+        - Get a list of effective roles on the subproject - should have three
+          roles: one direct, one by virtue of the domain inherited user role and
+          one by virtue of the project inherited user role
         - Also get effective roles for the domain - the role marked as
           inherited should not show up
 
