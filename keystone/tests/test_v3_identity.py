@@ -1478,7 +1478,6 @@ class IdentityInheritanceTestCase(test_v3.RestfulTestCase):
         member_url = '%(collection_url)s/%(role_id)s/inherited_to_projects' % {
             'collection_url': base_collection_url,
             'role_id': role_list[3]['id']}
-        collection_url = base_collection_url + '/inherited_to_projects'
 
         self.put(member_url)
         self.head(member_url)
