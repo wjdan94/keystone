@@ -179,9 +179,18 @@ class Manager(manager.Manager):
 
             return role_list
 
-        project_ref = self.get_project(tenant_id)
-        user_role_list = _get_user_project_roles(user_id, project_ref)
+        project_ref     = self.get_project(tenant_id)
+        user_role_list  = _get_user_project_roles(user_id, project_ref)
         group_role_list = _get_group_project_roles(user_id, project_ref)
+
+        if project_ref.get("parent_project_id"):
+            user_role_list  = list(set(user_role_list + \
+                self.get_roles_for_user_and_project(user_id,
+                    project_ref.get("parent_project_id"))))
+            group_role_list = list(set(group_role_list + \
+                self.get_roles_for_user_and_project(user_id,
+                    project_ref.get("parent_project_id"))))
+
         # Use set() to process the list to remove any duplicates
         return list(set(user_role_list + group_role_list))
 

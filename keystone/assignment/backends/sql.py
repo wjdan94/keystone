@@ -21,9 +21,11 @@ from keystone.common import sql
 from keystone import config
 from keystone import exception
 from keystone.openstack.common.gettextutils import _
+from keystone.openstack.common import log
 
 
 CONF = config.CONF
+LOG = log.getLogger(__name__)
 
 
 class AssignmentType:
@@ -152,10 +154,6 @@ class Assignment(keystone_assignment.Driver):
                 self._get_domain(session, domain_id)
             if project_id:
                 self._get_project(session, project_id)
-
-            if project_id and inherited_to_projects:
-                msg = _('Inherited roles can only be assigned to domains')
-                raise exception.Conflict(type='role grant', details=msg)
 
         type = calculate_type(user_id, group_id, project_id, domain_id)
         try:
