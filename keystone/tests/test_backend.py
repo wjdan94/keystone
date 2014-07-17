@@ -4229,31 +4229,65 @@ class InheritanceTests(object):
         Test Plan:
 
         - Enable OS-INHERIT extension
-        - Create a domain, with two projects and a user
-        - Assign an inherited user role on the domain, as well as a direct
-          user role to a separate project in a different domain
-        - Get a list of projects for user, should return all three projects
+        - Create a domain with a project and a subproject and two domains
+          with two projects and a subproject
+        - Create a user in the first domain
+        - Assign an direct user role to the project in the first domain, a
+          domain inherited user role on the second domain, and a project
+          inherited user role the project with a subproject in the third domain
+        - Get a list of projects for user, should return all six projects: one
+          from the first domain in virtue of the direct role, three from the
+          second domain in virtue of the domain inherited role and two from the
+          third domain in virtue of the project inherited role
 
         """
         self._enable_os_inherit_extension()
-        domain = self._create_random_domain()
-        user1 = self._create_random_user(domain_id=domain['id'])
-        self._create_random_project(domain_id=domain['id'])
-        self._create_random_project(domain_id=domain['id'])
 
-        # Create 2 grants, one on a project and one inherited grant
-        # on the domain
+        domain0 = self._create_random_domain()
+        project0 = self._create_random_project(domain_id=domain0['id'])
+        subproject0 = self._create_random_project(domain_id=domain0['id'], parent_project_id=project0['id'])
+
+        domain1 = self._create_random_domain()
+        project1a = self._create_random_project(domain_id=domain1['id'])
+        subproject1a = self._create_random_project(domain_id=domain1['id'], parent_project_id=project1a['id'])
+        project1b = self._create_random_project(domain_id=domain1['id'])
+
+        domain2 = self._create_random_domain()
+        project2a = self._create_random_project(domain_id=domain2['id'])
+        subproject2a = self._create_random_project(domain_id=domain2['id'], parent_project_id=project2a['id'])
+        project2b = self._create_random_project(domain_id=domain2['id'])
+
+        user1 = self._create_random_user(domain_id=domain0['id'])
+
+        # Direct role on project0
         self.assignment_api.create_grant(user_id=user1['id'],
-                                         project_id=self.tenant_bar['id'],
+                                         project_id=project0['id'],
                                          role_id=self.role_member['id'])
+        # Domain inherited role on domain1
         self.assignment_api.create_grant(user_id=user1['id'],
-                                         domain_id=domain['id'],
-                                         role_id=self.role_admin['id'],
+                                         domain_id=domain1['id'],
+                                         role_id=self.role_member['id'],
                                          inherited_to_projects=True)
-        # Should get back all three projects, one by virtue of the direct
-        # grant, plus both projects in the domain
-        user_projects = self.assignment_api.list_projects_for_user(user1['id'])
-        self.assertEqual(3, len(user_projects))
+        # Project inherited role on project2a
+        self.assignment_api.create_grant(user_id=user1['id'],
+                                         project_id=project2a['id'],
+                                         role_id=self.role_member['id'],
+                                         inherited_to_projects=True)
+
+        user_projects = [p['id'] for p in self.assignment_api.list_projects_for_user(user1['id'])]
+        self.assertEqual(6, len(user_projects))
+
+        # In virtue of the direct role
+        self.assertIn(project0['id'], user_projects)
+
+        # In virtue of the domain inherited role
+        self.assertIn(project1a['id'], user_projects)
+        self.assertIn(subproject1a['id'], user_projects)
+        self.assertIn(project1b['id'], user_projects)
+
+        # In virtue of the project inherited role
+        self.assertIn(project2a['id'], user_projects)
+        self.assertIn(subproject2a['id'], user_projects)
 
     def test_list_projects_for_user_with_inherited_group_grants(self):
         """Test inherited group roles.
