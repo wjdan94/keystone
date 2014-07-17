@@ -94,6 +94,19 @@ class Manager(manager.Manager):
     def update_project(self, tenant_id, tenant):
         original_tenant = self.driver.get_project(tenant_id)
         tenant = tenant.copy()
+
+        if ('parent_project_id' in tenant and
+                tenant['parent_project_id'] !=
+                original_tenant['parent_project_id']):
+
+            if self.driver.is_leaf_project(tenant_id):
+                parent_project_id = tenant['parent_project_id']
+                if parent_project_id is not None:
+                    self.driver.get_project(parent_project_id)
+            else:
+                raise exception.ForbiddenAction(
+                    action=_('cannot update parent_project_id from a project '
+                             'that is not a leaf in the hierarchy.'))
         if 'enabled' in tenant:
             tenant['enabled'] = clean.project_enabled(tenant['enabled'])
         if (original_tenant.get('enabled', True) and
@@ -619,7 +632,7 @@ class Driver(object):
         role_list = []
         for d in dict_list:
             if ((not d.get('inherited_to') and not inherited) or
-               (d.get('inherited_to') == 'projects' and inherited)):
+                    (d.get('inherited_to') == 'projects' and inherited)):
                 role_list.append(d['id'])
         return role_list
 
