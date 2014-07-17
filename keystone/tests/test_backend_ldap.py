@@ -1369,11 +1369,23 @@ class LDAPIdentity(BaseLDAPIdentity, tests.TestCase):
                           self.assignment_api.get_project,
                           project['id'])
 
+    def test_update_not_leaf_project_parent_project_id(self):
+        self.skipTest('LDAP does not support hierarchical projects')
+
+    def test_update_leaf_project_parent_project_id(self):
+        self.skipTest('LDAP does not support hierarchical projects')
+
+    def test_update_not_valid_parent_project_id(self):
+        self.skipTest('LDAP does not support hierarchical projects')
+
+    def test_update_none_parent_project_id(self):
+        self.skipTest('LDAP does not support hierarchical projects')
+
     def test_delete_hierarchical_leaf_project(self):
-        pass
+        self.skipTest('LDAP does not support hierarchical projects')
 
     def test_delete_hierarchical_not_leaf_project(self):
-        pass
+        self.skipTest('LDAP does not support hierarchical projects')
 
     @tests.skip_if_cache_disabled('assignment')
     def test_cache_layer_project_crud(self):
