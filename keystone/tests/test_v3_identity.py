@@ -1497,6 +1497,160 @@ class IdentityInheritanceTestCase(test_v3.RestfulTestCase):
         for entity in entities:
             self.assertIn(entity, role_list)
 
+    def test_token_comes_with_user_inherited_projects_roles(self):
+        role_list = []
+        NUM_OF_ROLES = 4
+        for _ in range(NUM_OF_ROLES):
+            role = {'id': uuid.uuid4().hex, 'name': uuid.uuid4().hex}
+            self.assignment_api.create_role(role['id'], role)
+            role_list.append(role)
+
+        domain = self.new_domain_ref()
+        self.assignment_api.create_domain(domain['id'], domain)
+
+        user1 = self.new_user_ref(
+            domain_id=domain['id'])
+        password = user1['password']
+        user1 = self.identity_api.create_user(user1)
+        user1['password'] = password
+
+        project1 = self.new_project_ref(
+            domain_id=domain['id'])
+        self.assignment_api.create_project(project1['id'], project1)
+        project2 = self.new_project_ref(
+            domain_id=domain['id'])
+        project2['parent_project_id'] = project1['id']
+        self.assignment_api.create_project(project2['id'], project2)
+        project3 = self.new_project_ref(
+            domain_id=domain['id'])
+        self.assignment_api.create_project(project3['id'], project3)
+        project4 = self.new_project_ref(
+            domain_id=domain['id'])
+        project4['parent_project_id'] = project2['id']
+        self.assignment_api.create_project(project4['id'], project4)
+
+        # Add some roles to the project
+        self.assignment_api.add_role_to_user_and_project(
+            user1['id'], project1['id'], role_list[0]['id'])
+        self.assignment_api.add_role_to_user_and_project(
+            user1['id'], project1['id'], role_list[1]['id'])
+        self.assignment_api.add_role_to_user_and_project(
+            user1['id'], project2['id'], role_list[2]['id'])
+        self.assignment_api.add_role_to_user_and_project(
+            user1['id'], project3['id'], role_list[0]['id'])
+
+        auth_data1 = self.build_authentication_request(
+            user_id=user1['id'],
+            password=user1['password'],
+            user_domain_id=domain['id'],
+            project_id=project1['id'])
+
+        auth_data2 = self.build_authentication_request(
+            user_id=user1['id'],
+            password=user1['password'],
+            user_domain_id=domain['id'],
+            project_id=project2['id'])
+
+        auth_data3 = self.build_authentication_request(
+            user_id=user1['id'],
+            password=user1['password'],
+            user_domain_id=domain['id'],
+            project_id=project3['id'])
+
+        auth_data4 = self.build_authentication_request(
+            user_id=user1['id'],
+            password=user1['password'],
+            user_domain_id=domain['id'],
+            project_id=project4['id'])
+
+        r = self.post('/auth/tokens',
+                      body=auth_data1,
+                      expected_status=201)
+
+        entities = r.result.get('token').get('roles')
+        combined_list = self.assignment_api.get_roles_for_user_and_project(
+            user1['id'], project1['id'])
+        self.assertEqual(2, len(entities))
+        self.assertIn(role_list[0]['id'], combined_list)
+        self.assertIn(role_list[1]['id'], combined_list)
+
+        r = self.post('/auth/tokens',
+                      body=auth_data2,
+                      expected_status=201)
+
+        entities = r.result.get('token').get('roles')
+        combined_list = self.assignment_api.get_roles_for_user_and_project(
+            user1['id'], project2['id'])
+        self.assertEqual(1, len(entities))
+        self.assertIn(role_list[2]['id'], combined_list)
+
+        r = self.post('/auth/tokens',
+                      body=auth_data3,
+                      expected_status=201)
+
+        entities = r.result.get('token').get('roles')
+        combined_list = self.assignment_api.get_roles_for_user_and_project(
+            user1['id'], project3['id'])
+        self.assertEqual(1, len(entities))
+        self.assertIn(role_list[0]['id'], combined_list)
+
+        r = self.post('/auth/tokens',
+                      body=auth_data4,
+                      expected_status=401)
+
+        base_collection_url = (
+            '/OS-INHERIT/projects/%(project_id)s/users/%(user_id)s/roles' % {
+                'project_id': project1['id'],
+                'user_id': user1['id']})
+        member_url = '%(collection_url)s/%(role_id)s/inherited_to_projects' % {
+            'collection_url': base_collection_url,
+            'role_id': role_list[3]['id']}
+
+        self.put(member_url)
+
+        r = self.post('/auth/tokens',
+                      body=auth_data1,
+                      expected_status=201)
+
+        entities = r.result.get('token').get('roles')
+        combined_list = self.assignment_api.get_roles_for_user_and_project(
+            user1['id'], project1['id'])
+        self.assertEqual(3, len(entities))
+        self.assertIn(role_list[0]['id'], combined_list)
+        self.assertIn(role_list[1]['id'], combined_list)
+        self.assertIn(role_list[3]['id'], combined_list)
+
+        r = self.post('/auth/tokens',
+                      body=auth_data2,
+                      expected_status=201)
+
+        entities = r.result.get('token').get('roles')
+        combined_list = self.assignment_api.get_roles_for_user_and_project(
+            user1['id'], project2['id'])
+        self.assertEqual(2, len(entities))
+        self.assertIn(role_list[2]['id'], combined_list)
+        self.assertIn(role_list[3]['id'], combined_list)
+
+        r = self.post('/auth/tokens',
+                      body=auth_data3,
+                      expected_status=201)
+
+        entities = r.result.get('token').get('roles')
+        combined_list = self.assignment_api.get_roles_for_user_and_project(
+            user1['id'], project3['id'])
+        self.assertEqual(1, len(entities))
+        self.assertIn(role_list[0]['id'], combined_list)
+
+        r = self.post('/auth/tokens',
+                      body=auth_data4,
+                      expected_status=201)
+
+        entities = r.result.get('token').get('roles')
+        combined_list = self.assignment_api.get_roles_for_user_and_project(
+            user1['id'], project4['id'])
+        self.assertEqual(1, len(entities))
+        self.assertIn(role_list[3]['id'], combined_list)
+
     def test_crud_user_inherited_domain_role_grants(self):
         role_list = []
         for _ in range(2):

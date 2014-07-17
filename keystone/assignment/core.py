@@ -173,7 +173,7 @@ class Manager(manager.Manager):
             return user_role_list
 
         return list(set(
-            user_role_list + self.get_inherited_roles_for_user_and_project(
+            user_role_list + self._get_inherited_roles_for_user_and_project(
                 user_id, project_ref.get("parent_project_id"))))
 
     def get_roles_for_user_and_project(self, user_id, tenant_id):
