@@ -3886,8 +3886,9 @@ class InheritanceTests(object):
         return domain
 
     def _create_random_project(self, domain_id, parent_project_id=None):
-        project = {'id': uuid.uuid4().hex, 'name': uuid.uuid4().hex,
-                    'domain_id': domain_id}
+        project = {
+            'id': uuid.uuid4().hex, 'name': uuid.uuid4().hex,
+            'domain_id': domain_id}
         if parent_project_id is not None:
             project['parent_project_id'] = parent_project_id
 
@@ -3895,8 +3896,9 @@ class InheritanceTests(object):
         return project
 
     def _create_random_user(self, domain_id):
-        user = {'name': uuid.uuid4().hex, 'domain_id': domain_id,
-                 'password': uuid.uuid4().hex, 'enabled': True}
+        user = {
+            'name': uuid.uuid4().hex, 'domain_id': domain_id,
+            'password': uuid.uuid4().hex, 'enabled': True}
         user = self.identity_api.create_user(user)
         return user
 
@@ -3922,8 +3924,9 @@ class InheritanceTests(object):
         - Enable OS-INHERIT extension
         - Create 5 roles
         - Create a domain, with a project, a subproject and a user
-        - Check no roles yet exit
-        - Assign direct user roles to the project the subproject and the domain
+        - Check no roles yet exists
+        - Assign direct user roles to the project, the subproject and the
+          domain
         - Get a list of effective roles on the project - should only get the
           direct role
         - Get a list of effective roles on the subproject - should only get the
@@ -3935,11 +3938,11 @@ class InheritanceTests(object):
           roles, one direct and one by virtue of the inherited user role
         - Now add an inherited user role to the project
         - Get a list of effective roles on the project - should have three
-          roles: one direct, one by virtue of the domain inherited user role and
-          one by virtue of the project inherited user role
+          roles: one direct, one by virtue of the domain inherited user role
+          and one by virtue of the project inherited user role
         - Get a list of effective roles on the subproject - should have three
-          roles: one direct, one by virtue of the domain inherited user role and
-          one by virtue of the project inherited user role
+          roles: one direct, one by virtue of the domain inherited user role
+          and one by virtue of the project inherited user role
         - Also get effective roles for the domain - the role marked as
           inherited should not show up
 
@@ -3949,7 +3952,8 @@ class InheritanceTests(object):
         domain1 = self._create_random_domain()
         user1 = self._create_random_user(domain_id=domain1['id'])
         project1 = self._create_random_project(domain_id=domain1['id'])
-        subproject1 = self._create_random_project(domain_id=domain1['id'], parent_project_id=project1['id'])
+        subproject1 = self._create_random_project(
+            domain_id=domain1['id'], parent_project_id=project1['id'])
 
         direct_domain_role = role_list[0]
         direct_project_role = role_list[1]
@@ -4007,8 +4011,8 @@ class InheritanceTests(object):
         self.assertIn(direct_project_role['id'], combined_list)
         self.assertIn(domain_inherited_role['id'], combined_list)
 
-        # Get the effective roles for the user and subproject again, this should
-        # now include the inherited role on the domain
+        # Get the effective roles for the user and subproject again, this
+        # should now include the inherited role on the domain
         combined_list = self.assignment_api.get_roles_for_user_and_project(
             user1['id'], subproject1['id'])
         self.assertEqual(2, len(combined_list))
@@ -4021,8 +4025,9 @@ class InheritanceTests(object):
                                          role_id=project_inherited_role['id'],
                                          inherited_to_projects=True)
 
-        # Get the effective roles for the user and project again, this should
-        # now include the inherited role on the domain and on the project
+        # Get the effective roles for the user and project again, this
+        # should now include the inherited role on the domain and on the
+        # project
         combined_list = self.assignment_api.get_roles_for_user_and_project(
             user1['id'], project1['id'])
         self.assertEqual(3, len(combined_list))
@@ -4030,8 +4035,8 @@ class InheritanceTests(object):
         self.assertIn(domain_inherited_role['id'], combined_list)
         self.assertIn(project_inherited_role['id'], combined_list)
 
-        # Get the effective roles for the user and subproject again, this should
-        # now include the inherited role on the domain
+        # Get the effective roles for the user and subproject again, this
+        # should now include the inherited role on the domain
         combined_list = self.assignment_api.get_roles_for_user_and_project(
             user1['id'], subproject1['id'])
         self.assertEqual(3, len(combined_list))
@@ -4131,8 +4136,8 @@ class InheritanceTests(object):
         self._enable_os_inherit_extension()
         domain = self._create_random_domain()
         user1 = self._create_random_user(domain_id=domain['id'])
-        project1 = self._create_random_project(domain_id=domain['id'])
-        project2 = self._create_random_project(domain_id=domain['id'])
+        self._create_random_project(domain_id=domain['id'])
+        self._create_random_project(domain_id=domain['id'])
 
         # Create 2 grants, one on a project and one inherited grant
         # on the domain
@@ -4167,10 +4172,10 @@ class InheritanceTests(object):
         self._enable_os_inherit_extension()
         domain = self._create_random_domain()
         domain2 = self._create_random_domain()
-        project1 = self._create_random_project(domain_id=domain['id'])
-        project2 = self._create_random_project(domain_id=domain['id'])
+        self._create_random_project(domain_id=domain['id'])
+        self._create_random_project(domain_id=domain['id'])
         project3 = self._create_random_project(domain_id=domain2['id'])
-        project4 = self._create_random_project(domain_id=domain2['id'])
+        self._create_random_project(domain_id=domain2['id'])
         user1 = self._create_random_user(domain_id=domain['id'])
         group1 = self._create_random_group(domain_id=domain['id'])
         self.identity_api.add_user_to_group(user1['id'], group1['id'])

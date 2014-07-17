@@ -117,9 +117,7 @@ class Assignment(keystone_assignment.Driver):
         for assignment in refs:
             role_ref = {}
             role_ref['id'] = assignment.role_id
-            if assignment.inherited and (
-                    assignment.type == AssignmentType.USER_DOMAIN or
-                    assignment.type == AssignmentType.GROUP_DOMAIN):
+            if assignment.inherited:
                 role_ref['inherited_to'] = 'projects'
             metadata_ref['roles'].append(role_ref)
 
