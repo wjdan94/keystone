@@ -198,6 +198,8 @@ class Manager(manager.Manager):
                         group_id=x['id'], tenant_id=project_ref['id'])
                     role_list += self._roles_from_role_dicts(
                         metadata_ref.get('roles', {}), False)
+                    role_list += self._roles_from_role_dicts(
+                        metadata_ref.get('roles', {}), True)
                 except exception.MetadataNotFound:
                     # no group grant, skip
                     pass
