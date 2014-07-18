@@ -167,6 +167,16 @@ def append_v3_routers(mapper, routers):
                        controller=role_controller,
                        action='check_grant',
                        conditions=dict(method=['GET', 'HEAD']))
+        mapper.connect(('/OS-INHERIT/projects/{project_id}/users/{user_id}'
+                        '/roles/inherited_to_projects'),
+                       controller=role_controller,
+                       action='list_grants',
+                       conditions=dict(method=['GET']))
+        mapper.connect(('/OS-INHERIT/projects/{project_id}/groups/{group_id}'
+                        '/roles/inherited_to_projects'),
+                       controller=role_controller,
+                       action='list_grants',
+                       conditions=dict(method=['GET']))
         mapper.connect(('/OS-INHERIT/domains/{domain_id}/users/{user_id}'
                         '/roles/inherited_to_projects'),
                        controller=role_controller,
