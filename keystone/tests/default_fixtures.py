@@ -88,14 +88,6 @@ USERS = [
     }
 ]
 
-GROUP = [
-    {
-        "description": "description",
-        "domain_id": DEFAULT_DOMAIN_ID,
-        "name": "foo"
-    }
-]
-
 ROLES = [
     {
         'id': 'admin',
