@@ -25,8 +25,8 @@ from keystone.common import driver_hints
 from keystone.common import manager
 from keystone import config
 from keystone import exception
+from keystone.i18n import _
 from keystone import notifications
-from keystone.openstack.common.gettextutils import _
 from keystone.openstack.common import log
 
 
@@ -670,7 +670,7 @@ class Driver(object):
         :raises: keystone.exception.ProjectNotFound
 
         """
-        raise exception.NotImplemented()
+        raise exception.NotImplemented()  # pragma: no cover
 
     @abc.abstractmethod
     def list_user_ids_for_project(self, tenant_id):
@@ -680,7 +680,7 @@ class Driver(object):
         :raises: keystone.exception.ProjectNotFound
 
         """
-        raise exception.NotImplemented()
+        raise exception.NotImplemented()  # pragma: no cover
 
     @abc.abstractmethod
     def add_role_to_user_and_project(self, user_id, tenant_id, role_id):
@@ -690,7 +690,7 @@ class Driver(object):
                  keystone.exception.ProjectNotFound,
                  keystone.exception.RoleNotFound
         """
-        raise exception.NotImplemented()
+        raise exception.NotImplemented()  # pragma: no cover
 
     @abc.abstractmethod
     def remove_role_from_user_and_project(self, user_id, tenant_id, role_id):
@@ -701,7 +701,7 @@ class Driver(object):
                  keystone.exception.RoleNotFound
 
         """
-        raise exception.NotImplemented()
+        raise exception.NotImplemented()  # pragma: no cover
 
     # assignment/grant crud
 
@@ -720,7 +720,7 @@ class Driver(object):
                  keystone.exception.RoleNotFound
 
         """
-        raise exception.NotImplemented()
+        raise exception.NotImplemented()  # pragma: no cover
 
     @abc.abstractmethod
     def list_grants(self, user_id=None, group_id=None,
@@ -735,7 +735,7 @@ class Driver(object):
                  keystone.exception.RoleNotFound
 
         """
-        raise exception.NotImplemented()
+        raise exception.NotImplemented()  # pragma: no cover
 
     @abc.abstractmethod
     def get_grant(self, role_id, user_id=None, group_id=None,
@@ -750,7 +750,7 @@ class Driver(object):
                  keystone.exception.RoleNotFound
 
         """
-        raise exception.NotImplemented()
+        raise exception.NotImplemented()  # pragma: no cover
 
     @abc.abstractmethod
     def delete_grant(self, role_id, user_id=None, group_id=None,
@@ -763,12 +763,12 @@ class Driver(object):
                  keystone.exception.RoleNotFound
 
         """
-        raise exception.NotImplemented()
+        raise exception.NotImplemented()  # pragma: no cover
 
     @abc.abstractmethod
     def list_role_assignments(self):
 
-        raise exception.NotImplemented()
+        raise exception.NotImplemented()  # pragma: no cover
 
     # domain crud
     @abc.abstractmethod
@@ -778,7 +778,7 @@ class Driver(object):
         :raises: keystone.exception.Conflict
 
         """
-        raise exception.NotImplemented()
+        raise exception.NotImplemented()  # pragma: no cover
 
     @abc.abstractmethod
     def list_domains(self, hints):
@@ -790,7 +790,7 @@ class Driver(object):
         :returns: a list of domain_refs or an empty list.
 
         """
-        raise exception.NotImplemented()
+        raise exception.NotImplemented()  # pragma: no cover
 
     @abc.abstractmethod
     def get_domain(self, domain_id):
@@ -800,7 +800,7 @@ class Driver(object):
         :raises: keystone.exception.DomainNotFound
 
         """
-        raise exception.NotImplemented()
+        raise exception.NotImplemented()  # pragma: no cover
 
     @abc.abstractmethod
     def get_domain_by_name(self, domain_name):
@@ -810,7 +810,7 @@ class Driver(object):
         :raises: keystone.exception.DomainNotFound
 
         """
-        raise exception.NotImplemented()
+        raise exception.NotImplemented()  # pragma: no cover
 
     @abc.abstractmethod
     def update_domain(self, domain_id, domain):
@@ -820,7 +820,7 @@ class Driver(object):
                  keystone.exception.Conflict
 
         """
-        raise exception.NotImplemented()
+        raise exception.NotImplemented()  # pragma: no cover
 
     @abc.abstractmethod
     def delete_domain(self, domain_id):
@@ -829,7 +829,7 @@ class Driver(object):
         :raises: keystone.exception.DomainNotFound
 
         """
-        raise exception.NotImplemented()
+        raise exception.NotImplemented()  # pragma: no cover
 
     # project crud
     @abc.abstractmethod
@@ -839,7 +839,7 @@ class Driver(object):
         :raises: keystone.exception.Conflict
 
         """
-        raise exception.NotImplemented()
+        raise exception.NotImplemented()  # pragma: no cover
 
     @abc.abstractmethod
     def list_projects(self, hints):
@@ -851,7 +851,7 @@ class Driver(object):
         :returns: a list of project_refs or an empty list.
 
         """
-        raise exception.NotImplemented()
+        raise exception.NotImplemented()  # pragma: no cover
 
     @abc.abstractmethod
     def list_projects_in_domain(self, domain_id):
@@ -863,7 +863,7 @@ class Driver(object):
         :returns: a list of project_refs or an empty list.
 
         """
-        raise exception.NotImplemented()
+        raise exception.NotImplemented()  # pragma: no cover
 
     @abc.abstractmethod
     def list_projects_for_user(self, user_id, group_ids, hints):
@@ -879,7 +879,7 @@ class Driver(object):
         :returns: a list of project_refs or an empty list.
 
         """
-        raise exception.NotImplemented()
+        raise exception.NotImplemented()  # pragma: no cover
 
     @abc.abstractmethod
     def get_project_hierarchy(self, project_id):
@@ -919,7 +919,7 @@ class Driver(object):
                   project_id or domain_id
 
         """
-        raise exception.NotImplemented()
+        raise exception.NotImplemented()  # pragma: no cover
 
     @abc.abstractmethod
     def list_projects_for_groups(self, group_ids):
@@ -929,7 +929,7 @@ class Driver(object):
         :returns: List of projects accessible to specified groups.
 
         """
-        raise exception.NotImplemented()
+        raise exception.NotImplemented()  # pragma: no cover
 
     @abc.abstractmethod
     def list_domains_for_groups(self, group_ids):
@@ -939,7 +939,7 @@ class Driver(object):
         :returns: List of domains accessible to specified groups.
 
         """
-        raise exception.NotImplemented()
+        raise exception.NotImplemented()  # pragma: no cover
 
     @abc.abstractmethod
     def get_project(self, project_id):
@@ -949,7 +949,7 @@ class Driver(object):
         :raises: keystone.exception.ProjectNotFound
 
         """
-        raise exception.NotImplemented()
+        raise exception.NotImplemented()  # pragma: no cover
 
     @abc.abstractmethod
     def update_project(self, project_id, project):
@@ -959,7 +959,7 @@ class Driver(object):
                  keystone.exception.Conflict
 
         """
-        raise exception.NotImplemented()
+        raise exception.NotImplemented()  # pragma: no cover
 
     @abc.abstractmethod
     def delete_project(self, project_id):
@@ -968,7 +968,7 @@ class Driver(object):
         :raises: keystone.exception.ProjectNotFound
 
         """
-        raise exception.NotImplemented()
+        raise exception.NotImplemented()  # pragma: no cover
 
     # role crud
 
@@ -979,7 +979,7 @@ class Driver(object):
         :raises: keystone.exception.Conflict
 
         """
-        raise exception.NotImplemented()
+        raise exception.NotImplemented()  # pragma: no cover
 
     @abc.abstractmethod
     def list_roles(self, hints):
@@ -991,7 +991,7 @@ class Driver(object):
         :returns: a list of role_refs or an empty list.
 
         """
-        raise exception.NotImplemented()
+        raise exception.NotImplemented()  # pragma: no cover
 
     @abc.abstractmethod
     def get_role(self, role_id):
@@ -1001,7 +1001,7 @@ class Driver(object):
         :raises: keystone.exception.RoleNotFound
 
         """
-        raise exception.NotImplemented()
+        raise exception.NotImplemented()  # pragma: no cover
 
     @abc.abstractmethod
     def update_role(self, role_id, role):
@@ -1011,7 +1011,7 @@ class Driver(object):
                  keystone.exception.Conflict
 
         """
-        raise exception.NotImplemented()
+        raise exception.NotImplemented()  # pragma: no cover
 
     @abc.abstractmethod
     def delete_role(self, role_id):
@@ -1020,7 +1020,7 @@ class Driver(object):
         :raises: keystone.exception.RoleNotFound
 
         """
-        raise exception.NotImplemented()
+        raise exception.NotImplemented()  # pragma: no cover
 
 # TODO(ayoung): determine what else these two functions raise
     @abc.abstractmethod
@@ -1030,7 +1030,7 @@ class Driver(object):
         :raises: keystone.exception.RoleNotFound
 
         """
-        raise exception.NotImplemented()
+        raise exception.NotImplemented()  # pragma: no cover
 
     @abc.abstractmethod
     def delete_group(self, group_id):
@@ -1039,7 +1039,7 @@ class Driver(object):
         :raises: keystone.exception.RoleNotFound
 
         """
-        raise exception.NotImplemented()
+        raise exception.NotImplemented()  # pragma: no cover
 
     def _set_parent_project(self, ref):
         """If the parent project ID  has not been set, set it to None."""
