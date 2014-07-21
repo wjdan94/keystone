@@ -1497,6 +1497,31 @@ class IdentityInheritanceTestCase(test_v3.RestfulTestCase):
         for entity in entities:
             self.assertIn(entity, role_list)
 
+    def test_check_user_inherited_role_in_project(self):
+        role_list = []
+        for _ in range(2):
+            role = {'id': uuid.uuid4().hex, 'name': uuid.uuid4().hex}
+            self.assignment_api.create_role(role['id'], role)
+            role_list.append(role)
+
+        ''' self.assignment_api.create_grant(
+            role_list[0]['id'], user_id=self.user['id'],
+            project_id=self.project['id'])'''
+
+        base_collection_url = (
+            '/OS-INHERIT/projects/%(project_id)s/users/%(user_id)s/roles' % {
+                'project_id': self.project['id'],
+                'user_id': self.user['id']})
+        member_url = '%(collection_url)s/%(role_id)s/inherited_to_projects' % {
+            'collection_url': base_collection_url,
+            'role_id': role_list[0]['id']}
+        collection_url = base_collection_url + '/inherited_to_projects'
+
+        self.put(member_url)
+
+        r = self.get(collection_url)
+        self.assertValidRoleListResponse(r, ref=role_list[0])
+
     def test_token_comes_with_user_inherited_projects_roles(self):
         role_list = []
         NUM_OF_ROLES = 4
