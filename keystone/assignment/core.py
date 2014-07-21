@@ -76,7 +76,10 @@ class Manager(manager.Manager):
         tenant.setdefault('enabled', True)
         tenant['enabled'] = clean.project_enabled(tenant['enabled'])
         tenant.setdefault('description', '')
-        tenant.setdefault('parent_project_id', None)
+        if 'parent_project_id' in tenant:
+            self.assignment_api.get_project(tenant['parent_project_id'])
+        else:
+            tenant.setdefault('parent_project_id', None)
         ret = self.driver.create_project(tenant_id, tenant)
         if SHOULD_CACHE(ret):
             self.get_project.set(ret, self, tenant_id)
