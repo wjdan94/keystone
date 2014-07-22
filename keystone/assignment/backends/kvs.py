@@ -316,6 +316,19 @@ class Assignment(kvs.Base, assignment.Driver):
 
         return assignment_list
 
+    def _get_project_depth(self, tenant_id):
+        depth = 1
+        project = self.get_project(tenant_id)
+        if project.get('parent_project_id', None):
+            depth += 1
+            parent = self.get_project(project['parent_project_id'])
+
+            while parent.get('parent_project_id', None):
+                depth += 1
+                parent = self.get_project(parent['parent_project_id'])
+
+        return depth
+
     # CRUD
     def create_project(self, tenant_id, tenant):
         tenant['name'] = clean.project_name(tenant['name'])
@@ -334,6 +347,14 @@ class Assignment(kvs.Base, assignment.Driver):
         else:
             msg = 'Duplicate name, %s.' % tenant['name']
             raise exception.Conflict(type='tenant', details=msg)
+
+        parent_project_id = tenant.get('parent_project_id', None)
+        if parent_project_id:
+            if self._get_project_depth(parent_project_id) >= \
+            CONF.max_project_tree_depth:
+                raise exception.Error(message=_("Project cannot be created: "
+                                            "max project-tree depth exceeded "
+                                            "on this branch."))
 
         self.db.set('tenant-%s' % tenant_id, tenant)
         self.db.set('tenant_name-%s' % tenant['name'], tenant)

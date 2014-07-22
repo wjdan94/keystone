@@ -16,12 +16,17 @@ import uuid
 
 import six
 
+from keystone import config
 from keystone import exception
 from keystone.openstack.common import timeutils
 from keystone import tests
 from keystone.tests import default_fixtures
 from keystone.tests.ksfixtures import database
 from keystone.tests import test_backend
+
+
+CONF = config.CONF
+DEFAULT_DOMAIN_ID = CONF.identity.default_domain_id
 
 
 class KvsIdentity(tests.TestCase, test_backend.IdentityTests):
@@ -39,6 +44,9 @@ class KvsIdentity(tests.TestCase, test_backend.IdentityTests):
         self.config_fixture.config(
             group='identity',
             driver='keystone.identity.backends.kvs.Identity')
+        self.config_fixture.config(
+            group='assignment',
+            driver='keystone.assignment.backends.kvs.Assignment')
 
     def test_password_hashed(self):
         driver = self.identity_api._select_identity_driver(
@@ -75,6 +83,100 @@ class KvsIdentity(tests.TestCase, test_backend.IdentityTests):
 
     def test_move_project_between_domains_with_clashing_names_fails(self):
         self.skipTest('Blocked by bug 1119770')
+
+    def test_sql_create_project_depth_0(self):
+        tenant_id = uuid.uuid4().hex
+        tenant1 = {
+            'id': tenant_id,
+            'name': uuid.uuid4().hex,
+            'domain_id': DEFAULT_DOMAIN_ID}
+        ref = self.assignment_api.driver.create_project(tenant_id, tenant1)
+
+        depth = self.assignment_api.driver._get_project_depth(ref['id'])
+        self.assertEqual(1, depth)
+
+    def test_sql_create_project_depth_3(self):
+        tenant_id = uuid.uuid4().hex
+        tenant1 = {
+            'id': tenant_id,
+            'name': uuid.uuid4().hex,
+            'domain_id': DEFAULT_DOMAIN_ID}
+        ref = self.assignment_api.driver.create_project(tenant_id, tenant1)
+
+        tenant_id = uuid.uuid4().hex
+        tenant2 = {
+            'id': tenant_id,
+            'name': uuid.uuid4().hex,
+            'domain_id': DEFAULT_DOMAIN_ID,
+            'parent_project_id': tenant1['id']}
+        ref = self.assignment_api.driver.create_project(tenant_id, tenant2)
+
+        tenant_id = uuid.uuid4().hex
+        tenant3 = {
+            'id': tenant_id,
+            'name': uuid.uuid4().hex,
+            'domain_id': DEFAULT_DOMAIN_ID,
+            'parent_project_id': tenant2['id']}
+        ref = self.assignment_api.driver.create_project(tenant_id, tenant3)
+
+        depth = self.assignment_api.driver._get_project_depth(ref['id'])
+        self.assertEqual(3, depth)
+
+    def test_sql_create_project_depth_not_allowed(self):
+        """This test verifies if 'CONF.max_project_tree_depth' is beeing
+         verified on creating projects. The default value for this conf
+         is 5 so, given that the root of the hierarchy if level 0, we'll
+         reach the level 5 on the 6th project
+        """
+        tenant_id = uuid.uuid4().hex
+        tenant1 = {
+            'id': tenant_id,
+            'name': uuid.uuid4().hex,
+            'domain_id': DEFAULT_DOMAIN_ID}
+        ref = self.assignment_api.driver.create_project(tenant_id, tenant1)
+
+        tenant_id = uuid.uuid4().hex
+        tenant2 = {
+            'id': tenant_id,
+            'name': uuid.uuid4().hex,
+            'domain_id': DEFAULT_DOMAIN_ID,
+            'parent_project_id': tenant1['id']}
+        ref = self.assignment_api.driver.create_project(tenant_id, tenant2)
+
+        tenant_id = uuid.uuid4().hex
+        tenant3 = {
+            'id': tenant_id,
+            'name': uuid.uuid4().hex,
+            'domain_id': DEFAULT_DOMAIN_ID,
+            'parent_project_id': tenant2['id']}
+        ref = self.assignment_api.driver.create_project(tenant_id, tenant3)
+
+        tenant_id = uuid.uuid4().hex
+        tenant4 = {
+            'id': tenant_id,
+            'name': uuid.uuid4().hex,
+            'domain_id': DEFAULT_DOMAIN_ID,
+            'parent_project_id': tenant3['id']}
+        ref = self.assignment_api.driver.create_project(tenant_id, tenant4)
+
+        tenant_id = uuid.uuid4().hex
+        tenant5 = {
+            'id': tenant_id,
+            'name': uuid.uuid4().hex,
+            'domain_id': DEFAULT_DOMAIN_ID,
+            'parent_project_id': tenant4['id']}
+        ref = self.assignment_api.driver.create_project(tenant_id, tenant5)
+
+        tenant_id = uuid.uuid4().hex
+        tenant6 = {
+            'id': tenant_id,
+            'name': uuid.uuid4().hex,
+            'domain_id': DEFAULT_DOMAIN_ID,
+            'parent_project_id': tenant5['id']}
+        self.assertRaises(exception.Error,
+                          self.assignment_api.driver.create_project,
+                          tenant_id,
+                          tenant6)
 
 
 class KvsToken(tests.TestCase, test_backend.TokenTests):

@@ -25,6 +25,7 @@ from keystone.common import sql
 from keystone import config
 from keystone import exception
 from keystone.identity.backends import sql as identity_sql
+from keystone.assignment.backends import sql as assignment_sql
 from keystone import tests
 from keystone.tests import default_fixtures
 from keystone.tests.ksfixtures import database
@@ -307,6 +308,98 @@ class SqlIdentity(SqlTests, test_backend.IdentityTests):
         user_ref = raw_user_ref.to_dict()
         self.assertNotIn('default_project_id', user_ref)
         session.close()
+
+    def test_sql_create_project_depth_0(self):
+        tenant_id = uuid.uuid4().hex
+        tenant1 = {
+            'id': tenant_id,
+            'name': uuid.uuid4().hex,
+            'domain_id': DEFAULT_DOMAIN_ID}
+        ref = self.assignment_api.create_project(tenant_id, tenant1)
+        depth = self.assignment_api._get_project_depth(ref['id'])
+        self.assertEqual(1, depth)
+
+    def test_sql_create_project_depth_3(self):
+        tenant_id = uuid.uuid4().hex
+        tenant1 = {
+            'id': tenant_id,
+            'name': uuid.uuid4().hex,
+            'domain_id': DEFAULT_DOMAIN_ID}
+        ref = self.assignment_api.create_project(tenant_id, tenant1)
+
+        tenant_id = uuid.uuid4().hex
+        tenant2 = {
+            'id': tenant_id,
+            'name': uuid.uuid4().hex,
+            'domain_id': DEFAULT_DOMAIN_ID,
+            'parent_project_id': tenant1['id']}
+        ref = self.assignment_api.create_project(tenant_id, tenant2)
+
+        tenant_id = uuid.uuid4().hex
+        tenant3 = {
+            'id': tenant_id,
+            'name': uuid.uuid4().hex,
+            'domain_id': DEFAULT_DOMAIN_ID,
+            'parent_project_id': tenant2['id']}
+        ref = self.assignment_api.create_project(tenant_id, tenant3)
+        depth = self.assignment_api._get_project_depth(ref['id'])
+        self.assertEqual(3, depth)
+
+    def test_sql_create_project_depth_not_allowed(self):
+        """This test verifies if 'CONF.max_project_tree_depth' is beeing
+         verified on creating projects. The default value for this conf
+         is 5 so, given that the root of the hierarchy if level 0, we'll
+         reach the level 5 on the 6th project
+        """
+        tenant_id = uuid.uuid4().hex
+        tenant1 = {
+            'id': tenant_id,
+            'name': uuid.uuid4().hex,
+            'domain_id': DEFAULT_DOMAIN_ID}
+        ref = self.assignment_api.create_project(tenant_id, tenant1)
+
+        tenant_id = uuid.uuid4().hex
+        tenant2 = {
+            'id': tenant_id,
+            'name': uuid.uuid4().hex,
+            'domain_id': DEFAULT_DOMAIN_ID,
+            'parent_project_id': tenant1['id']}
+        ref = self.assignment_api.create_project(tenant_id, tenant2)
+
+        tenant_id = uuid.uuid4().hex
+        tenant3 = {
+            'id': tenant_id,
+            'name': uuid.uuid4().hex,
+            'domain_id': DEFAULT_DOMAIN_ID,
+            'parent_project_id': tenant2['id']}
+        ref = self.assignment_api.create_project(tenant_id, tenant3)
+
+        tenant_id = uuid.uuid4().hex
+        tenant4 = {
+            'id': tenant_id,
+            'name': uuid.uuid4().hex,
+            'domain_id': DEFAULT_DOMAIN_ID,
+            'parent_project_id': tenant3['id']}
+        ref = self.assignment_api.create_project(tenant_id, tenant4)
+
+        tenant_id = uuid.uuid4().hex
+        tenant5 = {
+            'id': tenant_id,
+            'name': uuid.uuid4().hex,
+            'domain_id': DEFAULT_DOMAIN_ID,
+            'parent_project_id': tenant4['id']}
+        ref = self.assignment_api.create_project(tenant_id, tenant5)
+
+        tenant_id = uuid.uuid4().hex
+        tenant6 = {
+            'id': tenant_id,
+            'name': uuid.uuid4().hex,
+            'domain_id': DEFAULT_DOMAIN_ID,
+            'parent_project_id': tenant5['id']}
+        self.assertRaises(exception.Error,
+                          self.assignment_api.create_project,
+                          tenant_id,
+                          tenant6)
 
 
 class SqlTrust(SqlTests, test_backend.TrustTests):

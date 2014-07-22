@@ -433,11 +433,36 @@ class Assignment(keystone_assignment.Driver):
             refs = session.query(RoleAssignment).all()
             return [denormalize_role(ref) for ref in refs]
 
+    def _get_project_depth(self, tenant_id):
+        with sql.transaction() as session:
+            depth = 1
+            project = self._get_project(session, tenant_id)
+            if project.get('parent_project_id', None):
+                depth += 1
+                parent = self._get_project(session,
+                                           project['parent_project_id'])
+                while parent.get('parent_project_id', None):
+                    depth += 1
+                    parent = self._get_project(session,
+                                               parent['parent_project_id'])
+            return depth
+
     # CRUD
     @sql.handle_conflicts(conflict_type='project')
     def create_project(self, tenant_id, tenant):
         tenant['name'] = clean.project_name(tenant['name'])
         with sql.transaction() as session:
+            # Verify if the level doesn't exceed the maximum tree depth
+            # configured on keystone.conf
+            parent_project_id = tenant.get('parent_project_id', None)
+            if parent_project_id:
+                if self._get_project_depth(parent_project_id) >= \
+                CONF.max_project_tree_depth:
+                    raise exception.Error(message=_(
+                                        "Project cannot be created: "
+                                        "max project-tree depth exceeded "
+                                        "on this branch."))
+
             tenant_ref = Project.from_dict(tenant)
             tenant_ref.name = tenant['name']
             session.add(tenant_ref)

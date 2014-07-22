@@ -74,6 +74,10 @@ FILE_OPTIONS = {
                         'to set this value if the base URL contains a path '
                         '(e.g. /prefix/v2.0) or the endpoint should be found '
                         'on a different server.'),
+        cfg.IntOpt('max_project_tree_depth', default=5,
+                   help='The hierarchy depth on keystone is restricted due to '
+                        'performance issues. If you know what you\'re doing, set this '
+                        'to 0 so the tree can grow indefinitely.'),
         cfg.IntOpt('public_workers', default=1,
                    help='The number of worker processes to serve the public '
                         'WSGI application'),
