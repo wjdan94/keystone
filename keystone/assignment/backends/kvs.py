@@ -375,6 +375,20 @@ class Assignment(kvs.Base, assignment.Driver):
             old_project = self.db.get('tenant-%s' % tenant_id)
         except exception.NotFound:
             raise exception.ProjectNotFound(project_id=tenant_id)
+        # if moving, check if the tree depth on the destiny allows moving
+        if tenant.get('parent_project_id', None):
+            print "==========================================================================>>>", self._get_project_depth(tenant['parent_project_id'])
+            old_parent_id = old_project.get('parent_project_id', None)
+            new_parent_id = tenant.get('parent_project_id')
+
+            if (old_parent_id != new_parent_id and
+            self._get_project_depth(new_parent_id) >=\
+            CONF.max_project_tree_depth):
+                raise exception.Error(message=_(
+                                        "Project cannot be updated: "
+                                        "max project-tree depth exceeded "
+                                        "on destiny's branch."))
+
         new_project = old_project.copy()
         new_project.update(tenant)
         new_project['id'] = tenant_id

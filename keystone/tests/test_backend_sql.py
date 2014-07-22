@@ -12,7 +12,6 @@
 # WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
 # License for the specific language governing permissions and limitations
 # under the License.
-
 import uuid
 
 import mock
@@ -400,6 +399,100 @@ class SqlIdentity(SqlTests, test_backend.IdentityTests):
                           self.assignment_api.create_project,
                           tenant_id,
                           tenant6)
+
+    def test_sql_update_project_depth_3(self):
+        """This test verifies if 'CONF.max_project_tree_depth' is beeing
+         verified on updating projects. The default value for this conf
+         is 5 so, given that the root of the hierarchy if level 0, we'll
+         reach the level 5 on the 6th project
+        """
+        tenant_id = uuid.uuid4().hex
+        tenant1 = {
+            'id': tenant_id,
+            'name': uuid.uuid4().hex,
+            'domain_id': DEFAULT_DOMAIN_ID}
+        ref = self.assignment_api.create_project(tenant_id, tenant1)
+
+        tenant_id = uuid.uuid4().hex
+        tenant2 = {
+            'id': tenant_id,
+            'name': uuid.uuid4().hex,
+            'domain_id': DEFAULT_DOMAIN_ID,
+            'parent_project_id': tenant1['id']}
+        ref = self.assignment_api.create_project(tenant_id, tenant2)
+
+        tenant_id = uuid.uuid4().hex
+        tenant_move = {
+            'id': tenant_id,
+            'name': uuid.uuid4().hex,
+            'domain_id': DEFAULT_DOMAIN_ID}
+        ref = self.assignment_api.create_project(tenant_id, tenant_move)
+        depth = self.assignment_api._get_project_depth(ref['id'])
+        self.assertEqual(1, depth)
+        self.assignment_api.update_project(tenant_id,
+                                           {
+                                            'parent_project_id': tenant2['id']
+                                            }
+                                           )
+        depth = self.assignment_api._get_project_depth(ref['id'])
+        self.assertEqual(3, depth)
+
+    def test_sql_update_project_depth_not_allowed(self):
+        """This test verifies if 'CONF.max_project_tree_depth' is beeing
+         verified on updating projects. The default value for this conf
+         is 5 so, given that the root of the hierarchy if level 0, we'll
+         reach the level 5 on the 6th project
+        """
+        tenant_id = uuid.uuid4().hex
+        tenant1 = {
+            'id': tenant_id,
+            'name': uuid.uuid4().hex,
+            'domain_id': DEFAULT_DOMAIN_ID}
+        ref = self.assignment_api.create_project(tenant_id, tenant1)
+
+        tenant_id = uuid.uuid4().hex
+        tenant2 = {
+            'id': tenant_id,
+            'name': uuid.uuid4().hex,
+            'domain_id': DEFAULT_DOMAIN_ID,
+            'parent_project_id': tenant1['id']}
+        ref = self.assignment_api.create_project(tenant_id, tenant2)
+
+        tenant_id = uuid.uuid4().hex
+        tenant3 = {
+            'id': tenant_id,
+            'name': uuid.uuid4().hex,
+            'domain_id': DEFAULT_DOMAIN_ID,
+            'parent_project_id': tenant2['id']}
+        ref = self.assignment_api.create_project(tenant_id, tenant3)
+
+        tenant_id = uuid.uuid4().hex
+        tenant4 = {
+            'id': tenant_id,
+            'name': uuid.uuid4().hex,
+            'domain_id': DEFAULT_DOMAIN_ID,
+            'parent_project_id': tenant3['id']}
+        ref = self.assignment_api.create_project(tenant_id, tenant4)
+
+        tenant_id = uuid.uuid4().hex
+        tenant5 = {
+            'id': tenant_id,
+            'name': uuid.uuid4().hex,
+            'domain_id': DEFAULT_DOMAIN_ID,
+            'parent_project_id': tenant4['id']}
+        ref = self.assignment_api.create_project(tenant_id, tenant5)
+
+        tenant_id = uuid.uuid4().hex
+        tenant_move = {
+            'id': tenant_id,
+            'name': uuid.uuid4().hex,
+            'domain_id': DEFAULT_DOMAIN_ID}
+        ref = self.assignment_api.create_project(tenant_id, tenant_move)
+
+        self.assertRaises(exception.Error,
+                          self.assignment_api.update_project,
+                          tenant_id,
+                          {'parent_project_id': tenant5['id']})
 
 
 class SqlTrust(SqlTests, test_backend.TrustTests):

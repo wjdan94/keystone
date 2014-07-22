@@ -84,24 +84,24 @@ class KvsIdentity(tests.TestCase, test_backend.IdentityTests):
     def test_move_project_between_domains_with_clashing_names_fails(self):
         self.skipTest('Blocked by bug 1119770')
 
-    def test_sql_create_project_depth_0(self):
+    def test_kvs_create_project_depth_0(self):
         tenant_id = uuid.uuid4().hex
         tenant1 = {
             'id': tenant_id,
             'name': uuid.uuid4().hex,
             'domain_id': DEFAULT_DOMAIN_ID}
-        ref = self.assignment_api.driver.create_project(tenant_id, tenant1)
+        ref = self.assignment_api.create_project(tenant_id, tenant1)
 
-        depth = self.assignment_api.driver._get_project_depth(ref['id'])
+        depth = self.assignment_api._get_project_depth(ref['id'])
         self.assertEqual(1, depth)
 
-    def test_sql_create_project_depth_3(self):
+    def test_kvs_create_project_depth_3(self):
         tenant_id = uuid.uuid4().hex
         tenant1 = {
             'id': tenant_id,
             'name': uuid.uuid4().hex,
             'domain_id': DEFAULT_DOMAIN_ID}
-        ref = self.assignment_api.driver.create_project(tenant_id, tenant1)
+        ref = self.assignment_api.create_project(tenant_id, tenant1)
 
         tenant_id = uuid.uuid4().hex
         tenant2 = {
@@ -109,7 +109,7 @@ class KvsIdentity(tests.TestCase, test_backend.IdentityTests):
             'name': uuid.uuid4().hex,
             'domain_id': DEFAULT_DOMAIN_ID,
             'parent_project_id': tenant1['id']}
-        ref = self.assignment_api.driver.create_project(tenant_id, tenant2)
+        ref = self.assignment_api.create_project(tenant_id, tenant2)
 
         tenant_id = uuid.uuid4().hex
         tenant3 = {
@@ -117,12 +117,12 @@ class KvsIdentity(tests.TestCase, test_backend.IdentityTests):
             'name': uuid.uuid4().hex,
             'domain_id': DEFAULT_DOMAIN_ID,
             'parent_project_id': tenant2['id']}
-        ref = self.assignment_api.driver.create_project(tenant_id, tenant3)
+        ref = self.assignment_api.create_project(tenant_id, tenant3)
 
-        depth = self.assignment_api.driver._get_project_depth(ref['id'])
+        depth = self.assignment_api._get_project_depth(ref['id'])
         self.assertEqual(3, depth)
 
-    def test_sql_create_project_depth_not_allowed(self):
+    def test_kvs_create_project_depth_not_allowed(self):
         """This test verifies if 'CONF.max_project_tree_depth' is beeing
          verified on creating projects. The default value for this conf
          is 5 so, given that the root of the hierarchy if level 0, we'll
@@ -133,7 +133,7 @@ class KvsIdentity(tests.TestCase, test_backend.IdentityTests):
             'id': tenant_id,
             'name': uuid.uuid4().hex,
             'domain_id': DEFAULT_DOMAIN_ID}
-        ref = self.assignment_api.driver.create_project(tenant_id, tenant1)
+        ref = self.assignment_api.create_project(tenant_id, tenant1)
 
         tenant_id = uuid.uuid4().hex
         tenant2 = {
@@ -141,7 +141,7 @@ class KvsIdentity(tests.TestCase, test_backend.IdentityTests):
             'name': uuid.uuid4().hex,
             'domain_id': DEFAULT_DOMAIN_ID,
             'parent_project_id': tenant1['id']}
-        ref = self.assignment_api.driver.create_project(tenant_id, tenant2)
+        ref = self.assignment_api.create_project(tenant_id, tenant2)
 
         tenant_id = uuid.uuid4().hex
         tenant3 = {
@@ -149,7 +149,7 @@ class KvsIdentity(tests.TestCase, test_backend.IdentityTests):
             'name': uuid.uuid4().hex,
             'domain_id': DEFAULT_DOMAIN_ID,
             'parent_project_id': tenant2['id']}
-        ref = self.assignment_api.driver.create_project(tenant_id, tenant3)
+        ref = self.assignment_api.create_project(tenant_id, tenant3)
 
         tenant_id = uuid.uuid4().hex
         tenant4 = {
@@ -157,7 +157,7 @@ class KvsIdentity(tests.TestCase, test_backend.IdentityTests):
             'name': uuid.uuid4().hex,
             'domain_id': DEFAULT_DOMAIN_ID,
             'parent_project_id': tenant3['id']}
-        ref = self.assignment_api.driver.create_project(tenant_id, tenant4)
+        ref = self.assignment_api.create_project(tenant_id, tenant4)
 
         tenant_id = uuid.uuid4().hex
         tenant5 = {
@@ -165,7 +165,7 @@ class KvsIdentity(tests.TestCase, test_backend.IdentityTests):
             'name': uuid.uuid4().hex,
             'domain_id': DEFAULT_DOMAIN_ID,
             'parent_project_id': tenant4['id']}
-        ref = self.assignment_api.driver.create_project(tenant_id, tenant5)
+        ref = self.assignment_api.create_project(tenant_id, tenant5)
 
         tenant_id = uuid.uuid4().hex
         tenant6 = {
@@ -174,10 +174,103 @@ class KvsIdentity(tests.TestCase, test_backend.IdentityTests):
             'domain_id': DEFAULT_DOMAIN_ID,
             'parent_project_id': tenant5['id']}
         self.assertRaises(exception.Error,
-                          self.assignment_api.driver.create_project,
+                          self.assignment_api.create_project,
                           tenant_id,
                           tenant6)
 
+    def test_kvs_update_project_depth_3(self):
+        """This test verifies if 'CONF.max_project_tree_depth' is beeing
+         verified on updating projects. The default value for this conf
+         is 5 so, given that the root of the hierarchy if level 0, we'll
+         reach the level 5 on the 6th project
+        """
+        tenant_id = uuid.uuid4().hex
+        tenant1 = {
+            'id': tenant_id,
+            'name': uuid.uuid4().hex,
+            'domain_id': DEFAULT_DOMAIN_ID}
+        ref = self.assignment_api.create_project(tenant_id, tenant1)
+
+        tenant_id = uuid.uuid4().hex
+        tenant2 = {
+            'id': tenant_id,
+            'name': uuid.uuid4().hex,
+            'domain_id': DEFAULT_DOMAIN_ID,
+            'parent_project_id': tenant1['id']}
+        ref = self.assignment_api.create_project(tenant_id, tenant2)
+
+        tenant_id = uuid.uuid4().hex
+        tenant_move = {
+            'id': tenant_id,
+            'name': uuid.uuid4().hex,
+            'domain_id': DEFAULT_DOMAIN_ID}
+        ref = self.assignment_api.create_project(tenant_id, tenant_move)
+        depth = self.assignment_api._get_project_depth(ref['id'])
+        self.assertEqual(1, depth)
+        self.assignment_api.update_project(tenant_id,
+                                           {
+                                            'parent_project_id': tenant2['id']
+                                            }
+                                           )
+        depth = self.assignment_api._get_project_depth(ref['id'])
+        self.assertEqual(3, depth)
+
+    def test_kvs_update_project_depth_not_allowed(self):
+        """This test verifies if 'CONF.max_project_tree_depth' is beeing
+         verified on updating projects. The default value for this conf
+         is 5 so, given that the root of the hierarchy if level 0, we'll
+         reach the level 5 on the 6th project
+        """
+        tenant_id = uuid.uuid4().hex
+        tenant1 = {
+            'id': tenant_id,
+            'name': uuid.uuid4().hex,
+            'domain_id': DEFAULT_DOMAIN_ID}
+        ref = self.assignment_api.create_project(tenant_id, tenant1)
+
+        tenant_id = uuid.uuid4().hex
+        tenant2 = {
+            'id': tenant_id,
+            'name': uuid.uuid4().hex,
+            'domain_id': DEFAULT_DOMAIN_ID,
+            'parent_project_id': tenant1['id']}
+        ref = self.assignment_api.create_project(tenant_id, tenant2)
+
+        tenant_id = uuid.uuid4().hex
+        tenant3 = {
+            'id': tenant_id,
+            'name': uuid.uuid4().hex,
+            'domain_id': DEFAULT_DOMAIN_ID,
+            'parent_project_id': tenant2['id']}
+        ref = self.assignment_api.create_project(tenant_id, tenant3)
+
+        tenant_id = uuid.uuid4().hex
+        tenant4 = {
+            'id': tenant_id,
+            'name': uuid.uuid4().hex,
+            'domain_id': DEFAULT_DOMAIN_ID,
+            'parent_project_id': tenant3['id']}
+        ref = self.assignment_api.create_project(tenant_id, tenant4)
+
+        tenant_id = uuid.uuid4().hex
+        tenant5 = {
+            'id': tenant_id,
+            'name': uuid.uuid4().hex,
+            'domain_id': DEFAULT_DOMAIN_ID,
+            'parent_project_id': tenant4['id']}
+        ref = self.assignment_api.create_project(tenant_id, tenant5)
+
+        tenant_id = uuid.uuid4().hex
+        tenant_move = {
+            'id': tenant_id,
+            'name': uuid.uuid4().hex,
+            'domain_id': DEFAULT_DOMAIN_ID}
+        ref = self.assignment_api.create_project(tenant_id, tenant_move)
+
+        self.assertRaises(exception.Error,
+                          self.assignment_api.update_project,
+                          tenant_id,
+                          {'parent_project_id': tenant5['id']})
 
 class KvsToken(tests.TestCase, test_backend.TokenTests):
     def setUp(self):

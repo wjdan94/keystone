@@ -475,6 +475,18 @@ class Assignment(keystone_assignment.Driver):
         with sql.transaction() as session:
             tenant_ref = self._get_project(session, tenant_id)
             old_project_dict = tenant_ref.to_dict()
+
+            if tenant.get('parent_project_id', None):
+                old_parent_id = old_project_dict['parent_project_id']
+                new_parent_id = tenant['parent_project_id']
+
+                if (old_parent_id != new_parent_id and
+                self._get_project_depth(new_parent_id) >=\
+                CONF.max_project_tree_depth):
+                    raise exception.Error(message=_(
+                                        "Project cannot be updated: "
+                                        "max project-tree depth exceeded "
+                                        "on destiny's branch."))
             for k in tenant:
                 old_project_dict[k] = tenant[k]
             new_project = Project.from_dict(old_project_dict)
