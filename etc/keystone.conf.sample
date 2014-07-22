@@ -59,8 +59,8 @@
 # server. (string value)
 #admin_endpoint=<None>
 
-# The hierarchy depth on keystone is restricted due to 
-# performance issues.
+# The hierarchy depth on keystone is restricted due to
+# performance issues. (integer value)
 #max_project_tree_depth=5
 
 # The number of worker processes to serve the public WSGI
@@ -152,7 +152,7 @@
 #allowed_rpc_exception_modules=oslo.messaging.exceptions,nova.exception,cinder.exception,exceptions
 
 # Qpid broker hostname. (string value)
-#qpid_hostname=localhost
+#qpid_hostname=keystone
 
 # Qpid broker port. (integer value)
 #qpid_port=5672
@@ -209,7 +209,7 @@
 
 # The RabbitMQ broker address where a single node is used.
 # (string value)
-#rabbit_host=localhost
+#rabbit_host=keystone
 
 # The RabbitMQ broker port where a single node is used.
 # (integer value)
@@ -418,7 +418,7 @@
 #logging_exception_prefix=%(asctime)s.%(msecs)03d %(process)d TRACE %(name)s %(instance)s
 
 # List of logger=LEVEL pairs. (list value)
-#default_log_levels=amqp=WARN,amqplib=WARN,boto=WARN,qpid=WARN,sqlalchemy=WARN,suds=INFO,oslo.messaging=INFO,iso8601=WARN,requests.packages.urllib3.connectionpool=WARN
+#default_log_levels=amqp=WARN,amqplib=WARN,boto=WARN,qpid=WARN,sqlalchemy=WARN,suds=INFO,oslo.messaging=INFO,iso8601=WARN,requests.packages.urllib3.connectionpool=WARN,urllib3.connectionpool=WARN
 
 # Enables or disables publication of error events. (boolean
 # value)
@@ -429,11 +429,11 @@
 #fatal_deprecations=false
 
 # The format for an instance that is passed with the log
-# message.  (string value)
+# message. (string value)
 #instance_format="[instance: %(uuid)s] "
 
 # The format for an instance UUID that is passed with the log
-# message.  (string value)
+# message. (string value)
 #instance_uuid_format="[instance: %(uuid)s] "
 
 # The name of a logging configuration file. This file is
@@ -862,7 +862,7 @@
 #
 
 # URL for connecting to the LDAP server. (string value)
-#url=ldap://localhost
+#url=ldap://keystone
 
 # User BindDN to query the LDAP server. (string value)
 #user=<None>
@@ -1330,7 +1330,7 @@
 
 # SSL certificate subject (auto generated certificate).
 # (string value)
-#cert_subject=/C=US/ST=Unset/L=Unset/O=Unset/CN=localhost
+#cert_subject=/C=US/ST=Unset/L=Unset/O=Unset/CN=keystone
 
 
 [stats]

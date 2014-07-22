@@ -350,11 +350,12 @@ class Assignment(kvs.Base, assignment.Driver):
 
         parent_project_id = tenant.get('parent_project_id', None)
         if parent_project_id:
-            if self._get_project_depth(parent_project_id) >= \
-            CONF.max_project_tree_depth:
-                raise exception.Error(message=_("Project cannot be created: "
-                                            "max project-tree depth exceeded "
-                                            "on this branch."))
+            if (self._get_project_depth(parent_project_id) >=
+                    CONF.max_project_tree_depth):
+                msg = _("Project cannot be created: "
+                        "max project-tree depth exceeded "
+                        "on this branch.")
+                raise exception.Error(message=msg)
 
         self.db.set('tenant-%s' % tenant_id, tenant)
         self.db.set('tenant_name-%s' % tenant['name'], tenant)
@@ -377,17 +378,16 @@ class Assignment(kvs.Base, assignment.Driver):
             raise exception.ProjectNotFound(project_id=tenant_id)
         # if moving, check if the tree depth on the destiny allows moving
         if tenant.get('parent_project_id', None):
-            print "==========================================================================>>>", self._get_project_depth(tenant['parent_project_id'])
             old_parent_id = old_project.get('parent_project_id', None)
             new_parent_id = tenant.get('parent_project_id')
 
             if (old_parent_id != new_parent_id and
-            self._get_project_depth(new_parent_id) >=\
-            CONF.max_project_tree_depth):
-                raise exception.Error(message=_(
-                                        "Project cannot be updated: "
-                                        "max project-tree depth exceeded "
-                                        "on destiny's branch."))
+                    self._get_project_depth(new_parent_id) >=
+                    CONF.max_project_tree_depth):
+                msg = _("Project cannot be updated: "
+                        "max project-tree depth exceeded "
+                        "on destiny's branch.")
+                raise exception.Error(message=msg)
 
         new_project = old_project.copy()
         new_project.update(tenant)

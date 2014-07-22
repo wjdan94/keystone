@@ -455,12 +455,12 @@ class Assignment(keystone_assignment.Driver):
             # configured on keystone.conf
             parent_project_id = tenant.get('parent_project_id', None)
             if parent_project_id:
-                if self._get_project_depth(parent_project_id) >= \
-                CONF.max_project_tree_depth:
-                    raise exception.Error(message=_(
-                                        "Project cannot be created: "
-                                        "max project-tree depth exceeded "
-                                        "on this branch."))
+                if (self._get_project_depth(parent_project_id) >=
+                        CONF.max_project_tree_depth):
+                    msg = _("Project cannot be created: "
+                            "max project-tree depth exceeded "
+                            "on this branch.")
+                    raise exception.Error(message=msg)
 
             tenant_ref = Project.from_dict(tenant)
             tenant_ref.name = tenant['name']
@@ -481,12 +481,12 @@ class Assignment(keystone_assignment.Driver):
                 new_parent_id = tenant['parent_project_id']
 
                 if (old_parent_id != new_parent_id and
-                self._get_project_depth(new_parent_id) >=\
-                CONF.max_project_tree_depth):
-                    raise exception.Error(message=_(
-                                        "Project cannot be updated: "
-                                        "max project-tree depth exceeded "
-                                        "on destiny's branch."))
+                        self._get_project_depth(new_parent_id) >=
+                        CONF.max_project_tree_depth):
+                    msg = _("Project cannot be updated: "
+                            "max project-tree depth exceeded "
+                            "on destiny's branch.")
+                    raise exception.Error(message=msg)
             for k in tenant:
                 old_project_dict[k] = tenant[k]
             new_project = Project.from_dict(old_project_dict)

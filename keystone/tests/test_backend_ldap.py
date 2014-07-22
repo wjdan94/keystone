@@ -1593,6 +1593,21 @@ class LDAPIdentity(BaseLDAPIdentity, tests.TestCase):
         for group_ref in groups:
             self.assertNotIn('dn', group_ref)
         self.assertEqual(set(expected_group_ids), group_ids)
+        
+    def test_create_project_depth_0(self):
+        self.skipTest('LDAP does not support hierarchical projects')
+ 
+    def test_create_project_depth_3(self):
+        self.skipTest('LDAP does not support hierarchical projects')
+ 
+    def test_create_project_depth_not_allowed(self):
+        self.skipTest('LDAP does not support hierarchical projects')
+
+    def test_update_project_depth_3(self):
+        self.skipTest('LDAP does not support hierarchical projects')
+        
+    def test_update_project_depth_not_allowed(self):
+        self.skipTest('LDAP does not support hierarchical projects')
 
 
 class LDAPIdentityEnabledEmulation(LDAPIdentity):

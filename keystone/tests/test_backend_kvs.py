@@ -272,6 +272,7 @@ class KvsIdentity(tests.TestCase, test_backend.IdentityTests):
                           tenant_id,
                           {'parent_project_id': tenant5['id']})
 
+
 class KvsToken(tests.TestCase, test_backend.TokenTests):
     def setUp(self):
         super(KvsToken, self).setUp()
