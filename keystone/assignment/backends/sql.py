@@ -68,6 +68,13 @@ class Assignment(keystone_assignment.Driver):
                 tenant = parent_tenant
             return hierarchy
 
+    def is_leaf_project(self, project_id):
+        with sql.transaction() as session:
+            query = session.query(Project)
+            query = query.filter_by(parent_project_id=project_id)
+            project_refs = query.all()
+            return not project_refs
+
     def list_user_ids_for_project(self, tenant_id):
         with sql.transaction() as session:
             self._get_project(session, tenant_id)

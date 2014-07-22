@@ -118,6 +118,19 @@ class Manager(manager.Manager):
     def update_project(self, tenant_id, tenant):
         original_tenant = self.driver.get_project(tenant_id)
         tenant = tenant.copy()
+
+        if ('parent_project_id' in tenant and
+                tenant['parent_project_id'] !=
+                original_tenant['parent_project_id']):
+
+            if self.driver.is_leaf_project(tenant_id):
+                parent_project_id = tenant['parent_project_id']
+                if parent_project_id is not None:
+                    self.driver.get_project(parent_project_id)
+            else:
+                raise exception.ForbiddenAction(
+                    action=_('cannot update parent_project_id from a project '
+                             'that is not a leaf in the hierarchy.'))
         if 'enabled' in tenant:
             tenant['enabled'] = clean.project_enabled(tenant['enabled'])
         if (original_tenant.get('enabled', True) and
@@ -131,6 +144,11 @@ class Manager(manager.Manager):
 
     @notifications.deleted(_PROJECT)
     def delete_project(self, tenant_id):
+        if not self.driver.is_leaf_project(tenant_id):
+            raise exception.ForbiddenAction(
+                action=_('cannot delete a project that is not a leaf '
+                         'in the hierarchy.'))
+
         project = self.driver.get_project(tenant_id)
         user_ids = self.list_user_ids_for_project(tenant_id)
         self.token_api.delete_tokens_for_users(user_ids, project_id=tenant_id)
@@ -621,7 +639,7 @@ class Driver(object):
         role_list = []
         for d in dict_list:
             if ((not d.get('inherited_to') and not inherited) or
-               (d.get('inherited_to') == 'projects' and inherited)):
+                    (d.get('inherited_to') == 'projects' and inherited)):
                 role_list.append(d['id'])
         return role_list
 
@@ -872,6 +890,15 @@ class Driver(object):
         """Get a project hierarchy by ID.
 
         :returns: project_ref
+        :raises: keystone.exception.ProjectNotFound
+
+        """
+        raise exception.NotImplemented()
+
+    @abc.abstractmethod
+    def is_leaf_project(self, project_id):
+        """Checks if a project is a leaf in the hierarchy.
+
         :raises: keystone.exception.ProjectNotFound
 
         """
