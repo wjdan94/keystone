@@ -60,8 +60,7 @@
 #admin_endpoint=<None>
 
 # The hierarchy depth on keystone is restricted due to 
-# performance issues. If you know what you're doing, set this
-# to 0 so the tree can grow indefinitely.
+# performance issues.
 #max_project_tree_depth=5
 
 # The number of worker processes to serve the public WSGI
