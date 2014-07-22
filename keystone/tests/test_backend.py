@@ -4255,9 +4255,11 @@ class InheritanceTests(object):
         domain2 = self._create_random_domain()
         project2a = self._create_random_project(domain_id=domain2['id'])
         subproject2a = self._create_random_project(domain_id=domain2['id'], parent_project_id=project2a['id'])
+        subproject2ab = self._create_random_project(domain_id=domain2['id'], parent_project_id=project2a['id'])
         project2b = self._create_random_project(domain_id=domain2['id'])
 
         user1 = self._create_random_user(domain_id=domain0['id'])
+        role_list = self._create_random_roles(7)
 
         # Direct role on project0
         self.assignment_api.create_grant(user_id=user1['id'],
@@ -4271,11 +4273,11 @@ class InheritanceTests(object):
         # Project inherited role on project2a
         self.assignment_api.create_grant(user_id=user1['id'],
                                          project_id=project2a['id'],
-                                         role_id=self.role_member['id'],
+                                         role_id=role_list[0]['id'],
                                          inherited_to_projects=True)
 
         user_projects = [p['id'] for p in self.assignment_api.list_projects_for_user(user1['id'])]
-        self.assertEqual(6, len(user_projects))
+        self.assertEqual(7, len(user_projects))
 
         # In virtue of the direct role
         self.assertIn(project0['id'], user_projects)
@@ -4287,6 +4289,7 @@ class InheritanceTests(object):
 
         # In virtue of the project inherited role
         self.assertIn(project2a['id'], user_projects)
+        self.assertIn(subproject2ab['id'], user_projects)
         self.assertIn(subproject2a['id'], user_projects)
 
     def test_list_projects_for_user_with_inherited_group_grants(self):

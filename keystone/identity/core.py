@@ -28,9 +28,9 @@ from keystone.common import driver_hints
 from keystone.common import manager
 from keystone import config
 from keystone import exception
+from keystone.i18n import _
 from keystone.identity.mapping_backends import mapping
 from keystone import notifications
-from keystone.openstack.common.gettextutils import _
 from keystone.openstack.common import importutils
 from keystone.openstack.common import log
 
@@ -538,6 +538,17 @@ class Manager(manager.Manager):
         return self._set_domain_id_and_mapping(
             ref, domain_id, driver, mapping.EntityType.USER)
 
+    def assert_user_enabled(self, user_id, user=None):
+        """Assert the user and the user's domain are enabled.
+
+        :raise AssertionError if the user or the user's domain is disabled.
+        """
+        if user is None:
+            user = self.get_user(user_id)
+        self.assignment_api.assert_domain_enabled(user['domain_id'])
+        if not user.get('enabled', True):
+            raise AssertionError(_('User is disabled: %s') % user_id)
+
     @domains_configured
     @exception_translated('user')
     def get_user_by_name(self, user_name, domain_id):
@@ -819,7 +830,7 @@ class Driver(object):
         :returns: user_ref
         :raises: AssertionError
         """
-        raise exception.NotImplemented()
+        raise exception.NotImplemented()  # pragma: no cover
 
     # user crud
 
@@ -830,7 +841,7 @@ class Driver(object):
         :raises: keystone.exception.Conflict
 
         """
-        raise exception.NotImplemented()
+        raise exception.NotImplemented()  # pragma: no cover
 
     @abc.abstractmethod
     def list_users(self, hints):
@@ -842,7 +853,7 @@ class Driver(object):
         :returns: a list of user_refs or an empty list.
 
         """
-        raise exception.NotImplemented()
+        raise exception.NotImplemented()  # pragma: no cover
 
     @abc.abstractmethod
     def list_users_in_group(self, group_id, hints):
@@ -855,7 +866,7 @@ class Driver(object):
         :returns: a list of user_refs or an empty list.
 
         """
-        raise exception.NotImplemented()
+        raise exception.NotImplemented()  # pragma: no cover
 
     @abc.abstractmethod
     def get_user(self, user_id):
@@ -865,7 +876,7 @@ class Driver(object):
         :raises: keystone.exception.UserNotFound
 
         """
-        raise exception.NotImplemented()
+        raise exception.NotImplemented()  # pragma: no cover
 
     @abc.abstractmethod
     def update_user(self, user_id, user):
@@ -875,7 +886,7 @@ class Driver(object):
                  keystone.exception.Conflict
 
         """
-        raise exception.NotImplemented()
+        raise exception.NotImplemented()  # pragma: no cover
 
     @abc.abstractmethod
     def add_user_to_group(self, user_id, group_id):
@@ -885,7 +896,7 @@ class Driver(object):
                  keystone.exception.GroupNotFound
 
         """
-        raise exception.NotImplemented()
+        raise exception.NotImplemented()  # pragma: no cover
 
     @abc.abstractmethod
     def check_user_in_group(self, user_id, group_id):
@@ -895,7 +906,7 @@ class Driver(object):
                  keystone.exception.GroupNotFound
 
         """
-        raise exception.NotImplemented()
+        raise exception.NotImplemented()  # pragma: no cover
 
     @abc.abstractmethod
     def remove_user_from_group(self, user_id, group_id):
@@ -904,7 +915,7 @@ class Driver(object):
         :raises: keystone.exception.NotFound
 
         """
-        raise exception.NotImplemented()
+        raise exception.NotImplemented()  # pragma: no cover
 
     @abc.abstractmethod
     def delete_user(self, user_id):
@@ -913,7 +924,7 @@ class Driver(object):
         :raises: keystone.exception.UserNotFound
 
         """
-        raise exception.NotImplemented()
+        raise exception.NotImplemented()  # pragma: no cover
 
     @abc.abstractmethod
     def get_user_by_name(self, user_name, domain_id):
@@ -923,7 +934,7 @@ class Driver(object):
         :raises: keystone.exception.UserNotFound
 
         """
-        raise exception.NotImplemented()
+        raise exception.NotImplemented()  # pragma: no cover
 
     # group crud
 
@@ -934,7 +945,7 @@ class Driver(object):
         :raises: keystone.exception.Conflict
 
         """
-        raise exception.NotImplemented()
+        raise exception.NotImplemented()  # pragma: no cover
 
     @abc.abstractmethod
     def list_groups(self, hints):
@@ -946,7 +957,7 @@ class Driver(object):
         :returns: a list of group_refs or an empty list.
 
         """
-        raise exception.NotImplemented()
+        raise exception.NotImplemented()  # pragma: no cover
 
     @abc.abstractmethod
     def list_groups_for_user(self, user_id, hints):
@@ -959,7 +970,7 @@ class Driver(object):
         :returns: a list of group_refs or an empty list.
 
         """
-        raise exception.NotImplemented()
+        raise exception.NotImplemented()  # pragma: no cover
 
     @abc.abstractmethod
     def get_group(self, group_id):
@@ -969,7 +980,7 @@ class Driver(object):
         :raises: keystone.exception.GroupNotFound
 
         """
-        raise exception.NotImplemented()
+        raise exception.NotImplemented()  # pragma: no cover
 
     @abc.abstractmethod
     def update_group(self, group_id, group):
@@ -979,7 +990,7 @@ class Driver(object):
                  keystone.exception.Conflict
 
         """
-        raise exception.NotImplemented()
+        raise exception.NotImplemented()  # pragma: no cover
 
     @abc.abstractmethod
     def delete_group(self, group_id):
@@ -988,7 +999,7 @@ class Driver(object):
         :raises: keystone.exception.GroupNotFound
 
         """
-        raise exception.NotImplemented()
+        raise exception.NotImplemented()  # pragma: no cover
 
     # end of identity
 
@@ -1014,7 +1025,7 @@ class MappingDriver(object):
         :returns: public ID, or None if no mapping is found.
 
         """
-        raise exception.NotImplemented()
+        raise exception.NotImplemented()  # pragma: no cover
 
     @abc.abstractmethod
     def get_id_mapping(self, public_id):
@@ -1025,7 +1036,7 @@ class MappingDriver(object):
                        mapping is found, it returns None.
 
         """
-        raise exception.NotImplemented()
+        raise exception.NotImplemented()  # pragma: no cover
 
     @abc.abstractmethod
     def create_id_mapping(self, local_entity, public_id=None):
@@ -1038,7 +1049,7 @@ class MappingDriver(object):
         :returns: public ID
 
         """
-        raise exception.NotImplemented()
+        raise exception.NotImplemented()  # pragma: no cover
 
     @abc.abstractmethod
     def delete_id_mapping(self, public_id):
@@ -1049,7 +1060,7 @@ class MappingDriver(object):
         The method is silent if no mapping is found.
 
         """
-        raise exception.NotImplemented()
+        raise exception.NotImplemented()  # pragma: no cover
 
     @abc.abstractmethod
     def purge_mappings(self, purge_filter):
@@ -1060,4 +1071,4 @@ class MappingDriver(object):
                                   filter means purge all mappings.
 
         """
-        raise exception.NotImplemented()
+        raise exception.NotImplemented()  # pragma: no cover

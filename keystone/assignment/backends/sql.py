@@ -20,7 +20,7 @@ from keystone import clean
 from keystone.common import sql
 from keystone import config
 from keystone import exception
-from keystone.openstack.common.gettextutils import _
+from keystone.i18n import _
 
 
 CONF = config.CONF
@@ -278,11 +278,14 @@ class Assignment(keystone_assignment.Driver):
             # add in all the projects in that domain.
 
             domain_ids = set()
+            parent_project_ids = set()
             for assignment in assignments:
                 if ((assignment.type == AssignmentType.USER_DOMAIN or
                     assignment.type == AssignmentType.GROUP_DOMAIN) and
                         assignment.inherited):
                     domain_ids.add(assignment.target_id)
+                elif assignment.inherited:
+                    parent_project_ids.add(assignment.target_id)
 
             # Get the projects that are owned by all of these domains and
             # add them in to the project id list
@@ -292,8 +295,22 @@ class Assignment(keystone_assignment.Driver):
                 query = query.filter(Project.domain_id.in_(domain_ids))
                 for project_ref in query.all():
                     project_ids.add(project_ref.id)
+            if parent_project_ids:
+                for parent_id in parent_project_ids:
+                    for child_ref in self._get_children_projects(session, parent_id):
+                        project_ids.add(child_ref.id)
 
             return _project_ids_to_dicts(session, project_ids)
+
+    def _get_children_projects(self, session, project_id):
+        children_projects_id = set()
+
+        query = session.query(Project.id)
+        projects = query.all()
+        for p in projects:
+            if project_id in self.get_project_hierarchy(p):
+                children_projects_id.add(p)
+        return children_projects_id
 
     def get_roles_for_groups(self, group_ids, project_id=None, domain_id=None):
 
@@ -317,6 +334,28 @@ class Assignment(keystone_assignment.Driver):
             query = session.query(Role).filter(
                 sql_constraints).distinct()
         return [role.to_dict() for role in query.all()]
+
+    def get_group_project_roles(self, groups, project_id, project_domain_id):
+        sql_constraints = sqlalchemy.and_(
+            RoleAssignment.type == AssignmentType.GROUP_PROJECT,
+            RoleAssignment.target_id == project_id)
+        if CONF.os_inherit.enabled:
+            sql_constraints = sqlalchemy.or_(
+                sql_constraints,
+                sqlalchemy.and_(
+                    RoleAssignment.type == AssignmentType.GROUP_DOMAIN,
+                    RoleAssignment.inherited,
+                    RoleAssignment.target_id == project_domain_id))
+        sql_constraints = sqlalchemy.and_(sql_constraints,
+                                          RoleAssignment.actor_id.in_(groups))
+
+        # NOTE(morganfainberg): Only select the columns we actually care about
+        # here, in this case role_id.
+        with sql.transaction() as session:
+            query = session.query(RoleAssignment.role_id).filter(
+                sql_constraints).distinct()
+
+        return [result.role_id for result in query.all()]
 
     def _list_entities_for_groups(self, group_ids, entity):
         if entity == Domain:
