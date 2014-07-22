@@ -87,6 +87,27 @@ class Manager(manager.Manager):
                                          ret['domain_id'])
         return ret
 
+    def assert_domain_enabled(self, domain_id, domain=None):
+        """Assert the Domain is enabled.
+
+        :raise AssertionError if domain is disabled.
+        """
+        if domain is None:
+            domain = self.get_domain(domain_id)
+        if not domain.get('enabled', True):
+            raise AssertionError(_('Domain is disabled: %s') % domain_id)
+
+    def assert_project_enabled(self, project_id, project=None):
+        """Assert the project is enabled and its associated domain is enabled.
+
+        :raise AssertionError if the project or domain is disabled.
+        """
+        if project is None:
+            project = self.get_project(project_id)
+        self.assert_domain_enabled(domain_id=project['domain_id'])
+        if not project.get('enabled', True):
+            raise AssertionError(_('Project is disabled: %s') % project_id)
+
     @notifications.disabled(_PROJECT, public=False)
     def _disable_project(self, tenant_id):
         return self.token_api.delete_tokens_for_users(
@@ -152,31 +173,14 @@ class Manager(manager.Manager):
 
         """
         def _get_group_project_roles(user_id, project_ref):
-            role_list = []
-            group_refs = self.identity_api.list_groups_for_user(user_id)
-            for x in group_refs:
-                try:
-                    metadata_ref = self._get_metadata(
-                        group_id=x['id'], tenant_id=project_ref['id'])
-                    role_list += self._roles_from_role_dicts(
-                        metadata_ref.get('roles', {}), False)
-                except exception.MetadataNotFound:
-                    # no group grant, skip
-                    pass
-
-                if CONF.os_inherit.enabled:
-                    # Now get any inherited group roles for the owning domain
-                    try:
-                        metadata_ref = self._get_metadata(
-                            group_id=x['id'],
-                            domain_id=project_ref['domain_id'])
-                        role_list += self._roles_from_role_dicts(
-                            metadata_ref.get('roles', {}), True)
-                    except (exception.MetadataNotFound,
-                            exception.NotImplemented):
-                        pass
-
-            return role_list
+            # TODO(morganfainberg): Implement a way to get only group_ids
+            # instead of the more expensive to_dict() call for each record.
+            group_ids = [group['id'] for group in
+                         self.identity_api.list_groups_for_user(user_id)]
+            return self.driver.get_group_project_roles(
+                group_ids,
+                project_ref['id'],
+                project_ref['domain_id'])
 
         def _get_user_project_roles(user_id, project_ref):
             role_list = []
@@ -992,6 +996,24 @@ class Driver(object):
 
         """
         raise exception.NotImplemented()  # pragma: no cover
+
+    @abc.abstractmethod
+    def get_group_project_roles(self, groups, project_id, project_domain_id):
+        """Get group roles for a specific project.
+
+        Supports the ``OS-INHERIT`` role inheritance from the project's domain
+        if supported by the assignment driver.
+
+        :param groups: list of group ids
+        :type groups: list
+        :param project_id: project identifier
+        :type project_id: str
+        :param project_domain_id: project's domain identifier
+        :type project_domain_id: str
+        :returns: list of role_refs for the project
+        :rtype: list
+        """
+        raise exception.NotImplemented()
 
     @abc.abstractmethod
     def get_role(self, role_id):
