@@ -15,7 +15,9 @@
 """Token provider interface."""
 
 import abc
+import datetime
 
+from keystoneclient.common import cms
 import six
 
 from keystone.common import cache
@@ -24,7 +26,7 @@ from keystone.common import manager
 from keystone import config
 
 from keystone import exception
-from keystone.openstack.common.gettextutils import _
+from keystone.i18n import _
 from keystone.openstack.common import log
 from keystone.openstack.common import timeutils
 
@@ -59,7 +61,18 @@ class UnsupportedTokenVersionException(Exception):
     pass
 
 
-@dependency.requires('token_api')
+def default_expire_time():
+    """Determine when a fresh token should expire.
+
+    Expiration time varies based on configuration (see ``[token] expiration``).
+
+    :returns: a naive UTC datetime.datetime object
+
+    """
+    expire_delta = datetime.timedelta(seconds=CONF.token.expiration)
+    return timeutils.utcnow() + expire_delta
+
+
 @dependency.optional('revoke_api')
 @dependency.provider('token_provider_api')
 class Manager(manager.Manager):
@@ -105,8 +118,20 @@ class Manager(manager.Manager):
     def __init__(self):
         super(Manager, self).__init__(self.get_token_provider())
 
+    def unique_id(self, token_id):
+        """Return a unique ID for a token.
+
+        The returned value is useful as the primary key of a database table,
+        memcache store, or other lookup table.
+
+        :returns: Given a PKI token, returns it's hashed value. Otherwise,
+                  returns the passed-in value (such as a UUID token ID or an
+                  existing hash).
+        """
+        return cms.cms_hash_token(token_id, mode=CONF.token.hash_algorithm)
+
     def validate_token(self, token_id, belongs_to=None):
-        unique_id = self.token_api.unique_id(token_id)
+        unique_id = self.unique_id(token_id)
         # NOTE(morganfainberg): Ensure we never use the long-form token_id
         # (PKI) as part of the cache_key.
         token = self._validate_token(unique_id)
@@ -126,7 +151,7 @@ class Manager(manager.Manager):
             self.revoke_api.check_token(token_values)
 
     def validate_v2_token(self, token_id, belongs_to=None):
-        unique_id = self.token_api.unique_id(token_id)
+        unique_id = self.unique_id(token_id)
         # NOTE(morganfainberg): Ensure we never use the long-form token_id
         # (PKI) as part of the cache_key.
         token = self._validate_v2_token(unique_id)
@@ -152,7 +177,7 @@ class Manager(manager.Manager):
             return self.check_revocation_v3(token)
 
     def validate_v3_token(self, token_id):
-        unique_id = self.token_api.unique_id(token_id)
+        unique_id = self.unique_id(token_id)
         # NOTE(morganfainberg): Ensure we never use the long-form token_id
         # (PKI) as part of the cache_key.
         token = self._validate_v3_token(unique_id)
@@ -169,7 +194,7 @@ class Manager(manager.Manager):
         """
         # NOTE(morganfainberg): Ensure we never use the long-form token_id
         # (PKI) as part of the cache_key.
-        unique_id = self.token_api.unique_id(token_id)
+        unique_id = self.unique_id(token_id)
         self.validate_v2_token(unique_id, belongs_to=belongs_to)
 
     def check_v3_token(self, token_id):
@@ -181,7 +206,7 @@ class Manager(manager.Manager):
         """
         # NOTE(morganfainberg): Ensure we never use the long-form token_id
         # (PKI) as part of the cache_key.
-        unique_id = self.token_api.unique_id(token_id)
+        unique_id = self.unique_id(token_id)
         self.validate_v3_token(unique_id)
 
     @cache.on_arguments(should_cache_fn=SHOULD_CACHE,
@@ -270,7 +295,7 @@ class Provider(object):
         :returns: token version string
         :raises: keystone.token.provider.UnsupportedTokenVersionException
         """
-        raise exception.NotImplemented()
+        raise exception.NotImplemented()  # pragma: no cover
 
     @abc.abstractmethod
     def issue_v2_token(self, token_ref, roles_ref=None, catalog_ref=None):
@@ -284,7 +309,7 @@ class Provider(object):
         :type catalog_ref: dict
         :returns: (token_id, token_data)
         """
-        raise exception.NotImplemented()
+        raise exception.NotImplemented()  # pragma: no cover
 
     @abc.abstractmethod
     def issue_v3_token(self, user_id, method_names, expires_at=None,
@@ -310,7 +335,7 @@ class Provider(object):
         :type include_catalog: boolean
         :returns: (token_id, token_data)
         """
-        raise exception.NotImplemented()
+        raise exception.NotImplemented()  # pragma: no cover
 
     @abc.abstractmethod
     def revoke_token(self, token_id):
@@ -320,7 +345,7 @@ class Provider(object):
         :type token_id: string
         :returns: None.
         """
-        raise exception.NotImplemented()
+        raise exception.NotImplemented()  # pragma: no cover
 
     @abc.abstractmethod
     def validate_token(self, token_id):
@@ -333,7 +358,7 @@ class Provider(object):
         :returns: token_data
         :raises: keystone.exception.TokenNotFound
         """
-        raise exception.NotImplemented()
+        raise exception.NotImplemented()  # pragma: no cover
 
     @abc.abstractmethod
     def validate_v2_token(self, token_id):
@@ -347,7 +372,7 @@ class Provider(object):
         :raises: keystone.exception.TokenNotFound
 
         """
-        raise exception.NotImplemented()
+        raise exception.NotImplemented()  # pragma: no cover
 
     @abc.abstractmethod
     def validate_v3_token(self, token_id):
@@ -358,7 +383,7 @@ class Provider(object):
         :returns: token data
         :raises: keystone.exception.TokenNotFound
         """
-        raise exception.NotImplemented()
+        raise exception.NotImplemented()  # pragma: no cover
 
     @abc.abstractmethod
     def _get_token_id(self, token_data):
@@ -368,4 +393,4 @@ class Provider(object):
         :type token_data: dict
         returns: token identifier
         """
-        raise exception.NotImplemented()
+        raise exception.NotImplemented()  # pragma: no cover

@@ -21,7 +21,7 @@ from keystone.common import dependency
 from keystone import config
 from keystone.contrib import federation
 from keystone import exception
-from keystone.openstack.common.gettextutils import _
+from keystone.i18n import _
 from keystone.openstack.common import jsonutils
 from keystone import token
 from keystone.token import provider
@@ -43,7 +43,7 @@ class V2TokenDataHelper(object):
         metadata_ref = token_ref['metadata']
         if roles_ref is None:
             roles_ref = []
-        expires = token_ref.get('expires', token.default_expire_time())
+        expires = token_ref.get('expires', provider.default_expire_time())
         if expires is not None:
             if not isinstance(expires, six.text_type):
                 expires = timeutils.isotime(expires)
@@ -315,7 +315,7 @@ class V3TokenDataHelper(object):
 
     def _populate_token_dates(self, token_data, expires=None, trust=None):
         if not expires:
-            expires = token.default_expire_time()
+            expires = provider.default_expire_time()
         if not isinstance(expires, six.string_types):
             expires = timeutils.isotime(expires, subsecond=True)
         token_data['expires_at'] = expires
@@ -375,7 +375,7 @@ class BaseProvider(provider.Provider):
             try:
                 self.token_api.get_token(token_id)
             except exception.TokenNotFound:
-                raise exc_info[0], exc_info[1], exc_info[2]
+                six.reraise(*exc_info)
 
     def get_token_version(self, token_data):
         if token_data and isinstance(token_data, dict):
