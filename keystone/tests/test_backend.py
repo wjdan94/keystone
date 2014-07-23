@@ -3165,7 +3165,7 @@ class IdentityTests(object):
 
         user_ref = self.identity_api.get_user(user['id'])
         self.assertDictEqual(user_ref, updated_user_ref)
-        
+
     def test_create_project_depth_0(self):
         tenant_id = uuid.uuid4().hex
         tenant1 = {
