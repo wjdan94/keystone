@@ -508,6 +508,12 @@ class Manager(manager.Manager):
     def get_project_hierarchy(self, project_id):
         return self.driver.get_project_hierarchy(project_id)
 
+    def list_grants_from_multiple_targets(self, context, user_id=None,
+                                          group_id=None, targets_ids=None,
+                                          inherited_to_projects=False):
+        return self.driver.list_grants_from_multiple_targets(
+            context, user_id, group_id, targets_ids, inherited_to_projects)
+
     @cache.on_arguments(should_cache_fn=SHOULD_CACHE,
                         expiration_time=EXPIRATION_TIME)
     def get_project(self, project_id):
@@ -781,6 +787,20 @@ class Driver(object):
                  keystone.exception.GroupNotFound,
                  keystone.exception.ProjectNotFound,
                  keystone.exception.DomainNotFound,
+                 keystone.exception.RoleNotFound
+
+        """
+        raise exception.NotImplemented()
+
+    @abc.abstractmethod
+    def list_grants_from_multiple_targets(self, context, user_id=None,
+                                          group_id=None, targets_ids=None,
+                                          inherited_to_projects=False):
+        """Lists assignments/grants for multiple targets.
+
+        :raises: keystone.exception.UserNotFound,
+                 keystone.exception.GroupNotFound,
+                 keystone.exception.TargetNotFound,
                  keystone.exception.RoleNotFound
 
         """

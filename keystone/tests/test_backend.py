@@ -4062,7 +4062,8 @@ class InheritanceTests(object):
         - Make the user a member of both groups
         - Check no roles yet exit
 
-        - Assign direct group roles on the project, the subproject and the domain
+        - Assign direct group roles on the project, the subproject and the
+          domain
         - Get a list of effective roles on the project - should only get the
           direct role
         - Get a list of effective roles on the subproject - should only get the
@@ -4162,8 +4163,8 @@ class InheritanceTests(object):
                                          role_id=domain_inherited_role2['id'],
                                          inherited_to_projects=True)
 
-        # Get the effective roles for the user and project again, this should
-        # now include the inherited roles on the domain
+        # Get the effective roles for the user and project again, this
+        # should now include the inherited roles on the domain
         combined_list = self.assignment_api.get_roles_for_user_and_project(
             user1['id'], project1['id'])
         self.assertEqual(3, len(combined_list))
@@ -4171,8 +4172,8 @@ class InheritanceTests(object):
         self.assertIn(domain_inherited_role1['id'], combined_list)
         self.assertIn(domain_inherited_role2['id'], combined_list)
 
-        # Get the effective roles for the user and subproject again, this should
-        # now include the inherited roles on the domain
+        # Get the effective roles for the user and subproject again, this
+        # should now include the inherited roles on the domain
         combined_list = self.assignment_api.get_roles_for_user_and_project(
             user1['id'], subproject1['id'])
         self.assertEqual(3, len(combined_list))
@@ -4205,8 +4206,8 @@ class InheritanceTests(object):
         self.assertIn(project_inherited_role1['id'], combined_list)
         self.assertIn(project_inherited_role2['id'], combined_list)
 
-        # Get the effective roles for the user and subproject again, this should
-        # now include the inherited roles on the project
+        # Get the effective roles for the user and subproject again, this
+        # should now include the inherited roles on the project
         combined_list = self.assignment_api.get_roles_for_user_and_project(
             user1['id'], subproject1['id'])
         self.assertEqual(5, len(combined_list))
@@ -4245,18 +4246,22 @@ class InheritanceTests(object):
 
         domain0 = self._create_random_domain()
         project0 = self._create_random_project(domain_id=domain0['id'])
-        subproject0 = self._create_random_project(domain_id=domain0['id'], parent_project_id=project0['id'])
+        self._create_random_project(
+            domain_id=domain0['id'], parent_project_id=project0['id'])
 
         domain1 = self._create_random_domain()
         project1a = self._create_random_project(domain_id=domain1['id'])
-        subproject1a = self._create_random_project(domain_id=domain1['id'], parent_project_id=project1a['id'])
+        subproject1a = self._create_random_project(
+            domain_id=domain1['id'], parent_project_id=project1a['id'])
         project1b = self._create_random_project(domain_id=domain1['id'])
 
         domain2 = self._create_random_domain()
         project2a = self._create_random_project(domain_id=domain2['id'])
-        subproject2a = self._create_random_project(domain_id=domain2['id'], parent_project_id=project2a['id'])
-        subproject2ab = self._create_random_project(domain_id=domain2['id'], parent_project_id=project2a['id'])
-        project2b = self._create_random_project(domain_id=domain2['id'])
+        subproject2a = self._create_random_project(
+            domain_id=domain2['id'], parent_project_id=project2a['id'])
+        subproject2ab = self._create_random_project(
+            domain_id=domain2['id'], parent_project_id=project2a['id'])
+        self._create_random_project(domain_id=domain2['id'])
 
         user1 = self._create_random_user(domain_id=domain0['id'])
         role_list = self._create_random_roles(7)
@@ -4276,7 +4281,8 @@ class InheritanceTests(object):
                                          role_id=role_list[0]['id'],
                                          inherited_to_projects=True)
 
-        user_projects = [p['id'] for p in self.assignment_api.list_projects_for_user(user1['id'])]
+        user_projects = self.assignment_api.list_projects_for_user(user1['id'])
+        user_projects = [p['id'] for p in user_projects]
         self.assertEqual(7, len(user_projects))
 
         # In virtue of the direct role
@@ -4342,6 +4348,89 @@ class InheritanceTests(object):
         # project3 (since it has both a direct user role and an inherited role)
         user_projects = self.assignment_api.list_projects_for_user(user1['id'])
         self.assertEqual(5, len(user_projects))
+
+    def test_list_only_inherited_roles_for_user(self):
+        """Test inherited group roles.
+
+        Test Plan:
+
+        - Enable OS-INHERIT extension
+        - Create a domain with a project and a subproject and two domains
+          with two projects and a subproject
+        - Create a user in the first domain
+        - Assign an direct user role to the project in the first domain, a
+          domain inherited user role on the second domain, and a project
+          inherited user role the project with a subproject in the third domain
+        - Get a list of projects for user, should return all six projects: one
+          from the first domain in virtue of the direct role, three from the
+          second domain in virtue of the domain inherited role and two from the
+          third domain in virtue of the project inherited role
+
+        """
+        self._enable_os_inherit_extension()
+
+        domain0 = self._create_random_domain()
+        project0 = self._create_random_project(domain_id=domain0['id'])
+        # subproject0 = self._create_random_project(
+        #   domain_id=domain0['id'], parent_project_id=project0['id'])
+
+        domain1 = self._create_random_domain()
+        # project1a = self._create_random_project(domain_id=domain1['id'])
+        # subproject1a = self._create_random_project(
+        #    domain_id=domain1['id'], parent_project_id=project1a['id'])
+        # project1b = self._create_random_project(domain_id=domain1['id'])
+
+        domain2 = self._create_random_domain()
+        project2a = self._create_random_project(domain_id=domain2['id'])
+        # subproject2a = self._create_random_project(
+        #    domain_id=domain2['id'], parent_project_id=project2a['id'])
+        # subproject2ab = self._create_random_project(
+        #    domain_id=domain2['id'], parent_project_id=project2a['id'])
+        # project2b = self._create_random_project(domain_id=domain2['id'])
+
+        user1 = self._create_random_user(domain_id=domain0['id'])
+        role_list = self._create_random_roles(7)
+
+        # Direct role on project0
+        self.assignment_api.create_grant(user_id=user1['id'],
+                                         project_id=project0['id'],
+                                         role_id=self.role_member['id'])
+        # Domain inherited role on domain1
+        self.assignment_api.create_grant(user_id=user1['id'],
+                                         domain_id=domain1['id'],
+                                         role_id=self.role_member['id'],
+                                         inherited_to_projects=True)
+        # Project inherited role on project2a
+        self.assignment_api.create_grant(user_id=user1['id'],
+                                         project_id=project2a['id'],
+                                         role_id=role_list[0]['id'],
+                                         inherited_to_projects=True)
+
+        # base_collection_url = (
+        #    '/OS-INHERIT/projects/%(project_id)s/users/%(user_id)s/roles' % {
+        #        'project_id': project0['id'],
+        #        'user_id': user1['id']})
+        # collection_url = base_collection_url + '/inherited_to_projects'
+
+        # r = self.get(collection_url)
+        # self.assertValidRoleListResponse(r, ref=role_list[0])
+
+        # user_projects = [p['id'] for p in
+        # self.assignment_api.list_projects_for_user(user1['id'])]
+        # self.assertEqual(7, len(user_projects))
+
+        # In virtue of the direct role
+        # self.assertIn(project0['id'], user_projects)
+
+        # In virtue of the domain inherited role
+        # self.assertIn(project1a['id'], user_projects)
+        # self.assertIn(subproject1a['id'], user_projects)
+        # self.assertIn(project1b['id'], user_projects)
+
+        # In virtue of the project inherited role
+        # self.assertIn(project2a['id'], user_projects)
+        # self.assertIn(subproject2ab['id'], user_projects)
+        # self.assertIn(subproject2a['id'], user_projects)
 
 
 class FilterTests(filtering.FilterTests):

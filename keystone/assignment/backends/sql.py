@@ -180,6 +180,22 @@ class Assignment(keystone_assignment.Driver):
             q = q.filter(Role.id == RoleAssignment.role_id)
             return [x.to_dict() for x in q.all()]
 
+    def list_grants_from_multiple_targets(self, context, user_id=None,
+                                          group_id=None, targets_ids=None,
+                                          inherited_to_projects=False):
+        with sql.transaction() as session:
+            q = session.query(RoleAssignment)
+            q = q.filter_by(actor_id=user_id or group_id)
+            q = q.filter(RoleAssignment.target_id.in_(targets_ids))
+            q = q.filter_by(inherited=inherited_to_projects)
+
+            roles_ids = [x.role_id for x in q.all()]
+
+            q = session.query(Role)
+            q = q.filter(Role.id.in_(roles_ids))
+
+            return [x.to_dict() for x in q.all()]
+
     def _build_grant_filter(self, session, role_id, user_id, group_id,
                             domain_id, project_id, inherited_to_projects):
         q = session.query(RoleAssignment)
@@ -297,7 +313,8 @@ class Assignment(keystone_assignment.Driver):
                     project_ids.add(project_ref.id)
             if parent_project_ids:
                 for parent_id in parent_project_ids:
-                    for child_ref in self._get_children_projects(session, parent_id):
+                    for child_ref in self._get_children_projects(session,
+                                                                 parent_id):
                         project_ids.add(child_ref.id)
 
             return _project_ids_to_dicts(session, project_ids)
