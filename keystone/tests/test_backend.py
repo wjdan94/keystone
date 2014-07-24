@@ -2503,6 +2503,86 @@ class IdentityTests(object):
                           self.assignment_api.get_project,
                           root_project2['id'])
 
+    def test_list_project_parents(self):
+        project1 = {'id': uuid.uuid4().hex,
+                    'name': uuid.uuid4().hex,
+                    'description': '',
+                    'domain_id': DEFAULT_DOMAIN_ID,
+                    'enabled': True,
+                    'parent_project_id': None}
+        self.assignment_api.create_project(project1['id'], project1)
+
+        project2 = {'id': uuid.uuid4().hex,
+                    'name': uuid.uuid4().hex,
+                    'description': '',
+                    'domain_id': DEFAULT_DOMAIN_ID,
+                    'enabled': True,
+                    'parent_project_id': project1['id']}
+        self.assignment_api.create_project(project2['id'], project2)
+
+        project3 = {'id': uuid.uuid4().hex,
+                    'name': uuid.uuid4().hex,
+                    'description': '',
+                    'domain_id': DEFAULT_DOMAIN_ID,
+                    'enabled': True,
+                    'parent_project_id': project2['id']}
+        self.assignment_api.create_project(project3['id'], project3)
+
+        parents = self.assignment_api.list_project_parents(project3['id'])
+        self.assertEqual(2, len(parents))
+        self.assertIn(project1, parents)
+        self.assertIn(project2, parents)
+
+        parents = self.assignment_api.list_project_parents(project1['id'])
+        self.assertEqual(0, len(parents))
+
+    def test_list_project_children(self):
+        project1 = {'id': uuid.uuid4().hex,
+                    'name': uuid.uuid4().hex,
+                    'description': '',
+                    'domain_id': DEFAULT_DOMAIN_ID,
+                    'enabled': True,
+                    'parent_project_id': None}
+        self.assignment_api.create_project(project1['id'], project1)
+
+        project2 = {'id': uuid.uuid4().hex,
+                    'name': uuid.uuid4().hex,
+                    'description': '',
+                    'domain_id': DEFAULT_DOMAIN_ID,
+                    'enabled': True,
+                    'parent_project_id': project1['id']}
+        self.assignment_api.create_project(project2['id'], project2)
+
+        project3 = {'id': uuid.uuid4().hex,
+                    'name': uuid.uuid4().hex,
+                    'description': '',
+                    'domain_id': DEFAULT_DOMAIN_ID,
+                    'enabled': True,
+                    'parent_project_id': project2['id']}
+        self.assignment_api.create_project(project3['id'], project3)
+
+        project4 = {'id': uuid.uuid4().hex,
+                    'name': uuid.uuid4().hex,
+                    'description': '',
+                    'domain_id': DEFAULT_DOMAIN_ID,
+                    'enabled': True,
+                    'parent_project_id': project2['id']}
+        self.assignment_api.create_project(project4['id'], project4)
+
+        children = self.assignment_api.list_project_children(project1['id'])
+        self.assertEqual(3, len(children))
+        self.assertIn(project2, children)
+        self.assertIn(project3, children)
+        self.assertIn(project4, children)
+
+        children = self.assignment_api.list_project_children(project2['id'])
+        self.assertEqual(2, len(children))
+        self.assertIn(project3, children)
+        self.assertIn(project4, children)
+
+        children = self.assignment_api.list_project_children(project3['id'])
+        self.assertEqual(0, len(children))
+
     def test_create_project_with_invalid_parent(self):
         project = {'id': uuid.uuid4().hex,
                    'name': uuid.uuid4().hex,

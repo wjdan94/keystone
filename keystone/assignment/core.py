@@ -80,7 +80,7 @@ class Manager(manager.Manager):
 
         if 'parent_project_id' in tenant:
             if tenant['parent_project_id'] is not None:
-                self.assignment_api.get_project(tenant['parent_project_id'])
+                self.driver.get_project(tenant['parent_project_id'])
 
         ret = self.driver.create_project(tenant_id, tenant)
         if SHOULD_CACHE(ret):
@@ -459,11 +459,14 @@ class Manager(manager.Manager):
         return self.driver.list_user_projects(
             user_id, hints or driver_hints.Hints())
 
-    # NOTE(tellesnobrega): get_project_hierarchy is actually an internal
+    # NOTE(tellesnobrega): list_project_parents is actually an internal
     # method and not exposed via the API. Therefore there is no need to
     # support driver hints for it.
-    def get_project_hierarchy(self, project_id):
-        return self.driver.get_project_hierarchy(project_id)
+    def list_project_parents(self, project_id):
+        return self.driver.list_project_parents(project_id)
+
+    def list_project_children(self, project_id):
+        return self.driver.list_project_children(project_id)
 
     @cache.on_arguments(should_cache_fn=SHOULD_CACHE,
                         expiration_time=EXPIRATION_TIME)
@@ -888,10 +891,20 @@ class Driver(object):
         raise exception.NotImplemented()  # pragma: no cover
 
     @abc.abstractmethod
-    def get_project_hierarchy(self, project_id):
-        """Get a project hierarchy by ID.
+    def list_project_parents(self, project_id):
+        """List all parents from a project by its ID.
 
-        :returns: project_ref
+        :returns: a list of project_refs or an empty list
+        :raises: keystone.exception.ProjectNotFound
+
+        """
+        raise exception.NotImplemented()
+
+    @abc.abstractmethod
+    def list_project_children(self, project_id):
+        """List all children from a project by its ID.
+
+        :returns: a list of project_refs or an empty list
         :raises: keystone.exception.ProjectNotFound
 
         """

@@ -405,8 +405,8 @@ class ProjectV3(controller.V3Controller):
         return ProjectV3.wrap_collection(context, refs, hints=hints)
 
     @controller.protected()
-    def get_project_hierarchy(self, context, project_id):
-        return self.assignment_api.get_project_hierarchy(project_id)
+    def list_project_parents_ids(self, context, project_id):
+        return self.assignment_api.list_project_parents_ids(project_id)
 
     @controller.filterprotected('enabled', 'name')
     def list_user_projects(self, context, filters, user_id):

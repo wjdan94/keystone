@@ -1391,6 +1391,12 @@ class LDAPIdentity(BaseLDAPIdentity, tests.TestCase):
     def test_hierarchical_projects_crud(self):
         self.skipTest('LDAP does not support hierarchical projects')
 
+    def test_list_project_parents(self):
+        self.skipTest('LDAP does not support hierarchical projects')
+
+    def test_list_project_children(self):
+        self.skipTest('LDAP does not support hierarchical projects')
+
     def test_create_project_with_invalid_parent(self):
         self.skipTest('LDAP does not support hierarchical projects')
 

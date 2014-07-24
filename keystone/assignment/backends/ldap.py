@@ -58,8 +58,11 @@ class Assignment(assignment.Driver):
     def get_project(self, tenant_id):
         return self._set_missing_attr(self.project.get(tenant_id))
 
-    def get_project_hierarchy(self, tenant_name, domain_id):
-        return tenant_name
+    def list_project_parents(self, project_id, domain_id):
+        return []
+
+    def list_project_children(self, project_id):
+        return []
 
     def list_projects(self, hints):
         return self._set_missing_attr(self.project.get_all())
