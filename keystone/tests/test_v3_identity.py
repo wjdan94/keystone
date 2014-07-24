@@ -1576,10 +1576,11 @@ class IdentityInheritanceTestCase(test_v3.RestfulTestCase):
         self.put(member_url)
 
         r = self.get(collection_url)
+        self.assertValidRoleListResponse(r, expected_length=2)
         self.assertValidRoleListResponse(r, ref=role_list[0])
         self.delete(member_url)
         r = self.get(collection_url)
-        self.assertValidRoleListResponse(r, expected_length=0)
+        self.assertValidRoleListResponse(r, expected_length=1)
 
     def test_revoke_group_inherited_role_in_project(self):
         role_list = []

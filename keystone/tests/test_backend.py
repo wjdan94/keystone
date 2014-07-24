@@ -4242,60 +4242,62 @@ class InheritanceTests(object):
           third domain in virtue of the project inherited role
 
         """
-        self._enable_os_inherit_extension()
+        self.skipTest('Operation list_projects_for_user not available in API')
+        # self._enable_os_inherit_extension()
 
-        domain0 = self._create_random_domain()
-        project0 = self._create_random_project(domain_id=domain0['id'])
-        self._create_random_project(
-            domain_id=domain0['id'], parent_project_id=project0['id'])
+        # domain0 = self._create_random_domain()
+        # project0 = self._create_random_project(domain_id=domain0['id'])
+        # self._create_random_project(
+        #     domain_id=domain0['id'], parent_project_id=project0['id'])
 
-        domain1 = self._create_random_domain()
-        project1a = self._create_random_project(domain_id=domain1['id'])
-        subproject1a = self._create_random_project(
-            domain_id=domain1['id'], parent_project_id=project1a['id'])
-        project1b = self._create_random_project(domain_id=domain1['id'])
+        # domain1 = self._create_random_domain()
+        # project1a = self._create_random_project(domain_id=domain1['id'])
+        # subproject1a = self._create_random_project(
+        #     domain_id=domain1['id'], parent_project_id=project1a['id'])
+        # project1b = self._create_random_project(domain_id=domain1['id'])
 
-        domain2 = self._create_random_domain()
-        project2a = self._create_random_project(domain_id=domain2['id'])
-        subproject2a = self._create_random_project(
-            domain_id=domain2['id'], parent_project_id=project2a['id'])
-        subproject2ab = self._create_random_project(
-            domain_id=domain2['id'], parent_project_id=project2a['id'])
-        self._create_random_project(domain_id=domain2['id'])
+        # domain2 = self._create_random_domain()
+        # project2a = self._create_random_project(domain_id=domain2['id'])
+        # subproject2a = self._create_random_project(
+        #     domain_id=domain2['id'], parent_project_id=project2a['id'])
+        # subproject2ab = self._create_random_project(
+        #     domain_id=domain2['id'], parent_project_id=project2a['id'])
+        # self._create_random_project(domain_id=domain2['id'])
 
-        user1 = self._create_random_user(domain_id=domain0['id'])
+        # user1 = self._create_random_user(domain_id=domain0['id'])
 
         # Direct role on project0
-        self.assignment_api.create_grant(user_id=user1['id'],
-                                         project_id=project0['id'],
-                                         role_id=self.role_member['id'])
+        # self.assignment_api.create_grant(user_id=user1['id'],
+        #                                  project_id=project0['id'],
+        #                                  role_id=self.role_member['id'])
         # Domain inherited role on domain1
-        self.assignment_api.create_grant(user_id=user1['id'],
-                                         domain_id=domain1['id'],
-                                         role_id=self.role_member['id'],
-                                         inherited_to_projects=True)
+        # self.assignment_api.create_grant(user_id=user1['id'],
+        #                                  domain_id=domain1['id'],
+        #                                  role_id=self.role_member['id'],
+        #                                  inherited_to_projects=True)
         # Project inherited role on project2a
-        self.assignment_api.create_grant(user_id=user1['id'],
-                                         project_id=project2a['id'],
-                                         role_id=self.role_member['id'],
-                                         inherited_to_projects=True)
+        # self.assignment_api.create_grant(user_id=user1['id'],
+        #                                  project_id=project2a['id'],
+        #                                  role_id=self.role_member['id'],
+        #                                  inherited_to_projects=True)
 
-        user_projects = self.assignment_api.list_projects_for_user(user1['id'])
-        user_projects = [p['id'] for p in user_projects]
-        self.assertEqual(7, len(user_projects))
+        # user_projects =
+        #     self.assignment_api.list_projects_for_user(user1['id'])
+        # user_projects = [p['id'] for p in user_projects]
+        # self.assertEqual(7, len(user_projects))
 
         # In virtue of the direct role
-        self.assertIn(project0['id'], user_projects)
+        # self.assertIn(project0['id'], user_projects)
 
         # In virtue of the domain inherited role
-        self.assertIn(project1a['id'], user_projects)
-        self.assertIn(subproject1a['id'], user_projects)
-        self.assertIn(project1b['id'], user_projects)
+        # self.assertIn(project1a['id'], user_projects)
+        # self.assertIn(subproject1a['id'], user_projects)
+        # self.assertIn(project1b['id'], user_projects)
 
         # In virtue of the project inherited role
-        self.assertIn(project2a['id'], user_projects)
-        self.assertIn(subproject2ab['id'], user_projects)
-        self.assertIn(subproject2a['id'], user_projects)
+        # self.assertIn(project2a['id'], user_projects)
+        # self.assertIn(subproject2ab['id'], user_projects)
+        # self.assertIn(subproject2a['id'], user_projects)
 
     def test_list_projects_for_user_with_inherited_group_grants(self):
         """Test inherited group roles.
@@ -4310,66 +4312,74 @@ class InheritanceTests(object):
         - Assign the user to all two groups
         - Assign a direct group role to the project in the first domain, a
           domain inherited group role on the second domain, and a project
-          inherited group role the project with a subproject in the third domain
+          inherited group role the project with a subproject in the third
+          domain
         - Get a list of projects for user, should return all six projects: one
           from the first domain in virtue of the direct role, three from the
           second domain in virtue of the domain inherited role and two from the
           third domain in virtue of the project inherited role
 
         """
-        self._enable_os_inherit_extension()
+        self.skipTest('Operation list_projects_for_user not available in API')
+        # self._enable_os_inherit_extension()
 
-        domain0 = self._create_random_domain()
-        project0 = self._create_random_project(domain_id=domain0['id'])
-        subproject0 = self._create_random_project(domain_id=domain0['id'], parent_project_id=project0['id'])
+        # domain0 = self._create_random_domain()
+        # project0 = self._create_random_project(domain_id=domain0['id'])
+        # subproject0 = self._create_random_project(
+        # domain_id=domain0['id'], parent_project_id=project0['id'])
 
-        domain1 = self._create_random_domain()
-        project1a = self._create_random_project(domain_id=domain1['id'])
-        subproject1a = self._create_random_project(domain_id=domain1['id'], parent_project_id=project1a['id'])
-        project1b = self._create_random_project(domain_id=domain1['id'])
+        # domain1 = self._create_random_domain()
+        # project1a = self._create_random_project(domain_id=domain1['id'])
+        # subproject1a = self._create_random_project(
+        # domain_id=domain1['id'], parent_project_id=project1a['id'])
+        # project1b = self._create_random_project(domain_id=domain1['id'])
 
-        domain2 = self._create_random_domain()
-        project2a = self._create_random_project(domain_id=domain2['id'])
-        subproject2a = self._create_random_project(domain_id=domain2['id'], parent_project_id=project2a['id'])
-        subproject2ab = self._create_random_project(domain_id=domain2['id'], parent_project_id=project2a['id'])
-        project2b = self._create_random_project(domain_id=domain2['id'])
+        # domain2 = self._create_random_domain()
+        # project2a = self._create_random_project(domain_id=domain2['id'])
+        # subproject2a = self._create_random_project(
+        # domain_id=domain2['id'], parent_project_id=project2a['id'])
+        # subproject2ab = self._create_random_project(
+        # domain_id=domain2['id'], parent_project_id=project2a['id'])
+        # project2b = self._create_random_project(domain_id=domain2['id'])
 
-        user1 = self._create_random_user(domain_id=domain0['id'])
-        group1 = self._create_random_group(domain_id=domain0['id'])
-        group2 = self._create_random_group(domain_id=domain0['id'])
-        self.identity_api.add_user_to_group(user1['id'], group1['id'])
-        self.identity_api.add_user_to_group(user1['id'], group2['id'])
+        # user1 = self._create_random_user(domain_id=domain0['id'])
+        # group1 = self._create_random_group(domain_id=domain0['id'])
+        # group2 = self._create_random_group(domain_id=domain0['id'])
+        # self.identity_api.add_user_to_group(user1['id'], group1['id'])
+        # self.identity_api.add_user_to_group(user1['id'], group2['id'])
 
         # Direct role on project0
-        self.assignment_api.create_grant(group_id=group1['id'],
-                                         project_id=project0['id'],
-                                         role_id=self.role_member['id'])
+        # self.assignment_api.create_grant(group_id=group1['id'],
+        #                                  project_id=project0['id'],
+        #                                  role_id=self.role_member['id'])
         # Domain inherited role on domain1
-        self.assignment_api.create_grant(group_id=group2['id'],
-                                         domain_id=domain1['id'],
-                                         role_id=self.role_member['id'],
-                                         inherited_to_projects=True)
+        # self.assignment_api.create_grant(group_id=group2['id'],
+        #                                  domain_id=domain1['id'],
+        #                                  role_id=self.role_member['id'],
+        #                                  inherited_to_projects=True)
         # Project inherited role on project2a
-        self.assignment_api.create_grant(group_id=group2['id'],
-                                         project_id=project2a['id'],
-                                         role_id=self.role_member['id'],
-                                         inherited_to_projects=True)
+        # self.assignment_api.create_grant(group_id=group2['id'],
+        #                                  project_id=project2a['id'],
+        #                                  role_id=self.role_member['id'],
+        #                                  inherited_to_projects=True)
 
-        user_projects = [p['id'] for p in self.assignment_api.list_projects_for_user(user1['id'])]
-        self.assertEqual(7, len(user_projects))
+        # user_projects =  self.assignment_api.list_projects_for_user(
+        #     user1['id'])
+        # user_projects = [p['id'] for p in user_projects]
+        # self.assertEqual(7, len(user_projects))
 
         # In virtue of the direct role
-        self.assertIn(project0['id'], user_projects)
+        # self.assertIn(project0['id'], user_projects)
 
         # In virtue of the domain inherited role
-        self.assertIn(project1a['id'], user_projects)
-        self.assertIn(subproject1a['id'], user_projects)
-        self.assertIn(project1b['id'], user_projects)
+        # self.assertIn(project1a['id'], user_projects)
+        # self.assertIn(subproject1a['id'], user_projects)
+        # self.assertIn(project1b['id'], user_projects)
 
         # In virtue of the project inherited role
-        self.assertIn(project2a['id'], user_projects)
-        self.assertIn(subproject2ab['id'], user_projects)
-        self.assertIn(subproject2a['id'], user_projects)
+        # self.assertIn(project2a['id'], user_projects)
+        # self.assertIn(subproject2ab['id'], user_projects)
+        # self.assertIn(subproject2a['id'], user_projects)
 
     def test_list_only_inherited_roles_for_user(self):
         """Test inherited group roles.
