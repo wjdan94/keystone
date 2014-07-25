@@ -1552,6 +1552,8 @@ class IdentityInheritanceTestCase(test_v3.RestfulTestCase):
             'role_id': role_list[0]['id']}
         collection_url = base_collection_url + '/inherited_to_projects'
 
+        r = self.get(collection_url)
+
         self.put(member_url)
 
         r = self.get(collection_url)
@@ -2261,6 +2263,34 @@ class IdentityInheritanceTestCase(test_v3.RestfulTestCase):
         self.assertRoleAssignmentInListResponse(r, ud_entity, link_url=ud_url)
         self.assertRoleAssignmentInListResponse(r, gd_entity, link_url=gd_url)
 
+    def _build_collection_url(self, user_id=None, group_id=None,
+                              domain_id=None, project_id=None):
+        if user_id is not None and domain_id is not None:
+            base_collection_url = (
+                '/OS-INHERIT/domains/%(domain_id)s/users/%(user_id)s/roles' % {
+                    'domain_id': domain_id,
+                    'user_id': user_id})
+            collection_url = base_collection_url + '/inherited_roles'
+        elif group_id is not None and domain_id is not None:
+            base_collection_url = (
+                '/OS-INHERIT/domains/%(domain_id)s/groups/%(group_id)s/roles' % {
+                    'domain_id': domain_id,
+                    'group_id': group_id})
+            collection_url = base_collection_url + '/inherited_roles'
+        elif user_id is not None and project_id is not None:
+            base_collection_url = (
+                '/OS-INHERIT/projects/%(project_id)s/users/%(user_id)s/roles' % {
+                    'project_id': project_id,
+                    'user_id': user_id})
+            collection_url = base_collection_url + '/inherited_roles'
+        elif group_id is not None and project_id is not None:
+            base_collection_url = (
+                '/OS-INHERIT/projects/%(project_id)s/groups/%(group_id)s/roles' % {
+                    'project_id': project_id,
+                    'group_id': group_id})
+            collection_url = base_collection_url + '/inherited_roles'
+        return collection_url
+
     def test_list_only_inherited_roles_for_user(self):
         """Test inherited group roles.
 
@@ -2281,7 +2311,7 @@ class IdentityInheritanceTestCase(test_v3.RestfulTestCase):
         """
         domain0 = self._create_random_domain()
         project0 = self._create_random_project(domain_id=domain0['id'])
-        self._create_random_project(
+        subproject0 = self._create_random_project(
             domain_id=domain0['id'], parent_project_id=project0['id'])
 
         domain1 = self._create_random_domain()
@@ -2298,8 +2328,16 @@ class IdentityInheritanceTestCase(test_v3.RestfulTestCase):
             domain_id=domain2['id'], parent_project_id=project2a['id'])
         self._create_random_project(domain_id=domain2['id'])
 
+        domain3 = self._create_random_domain()
+        project3a = self._create_random_project(domain_id=domain3['id'])
+        project3b = self._create_random_project(domain_id=domain3['id'])
+        subproject3a1 = self._create_random_project(
+            domain_id=domain3['id'],  parent_project_id=project3a['id'])
+        subproject3a2 = self._create_random_project(
+            domain_id=domain3['id'],  parent_project_id=project3a['id'])
+
         user1 = self._create_random_user(domain_id=domain0['id'])
-        role_list = self._create_random_roles(7)
+        role_list = self._create_random_roles(8)
 
         # Direct role on project0
         self.assignment_api.create_grant(user_id=user1['id'],
@@ -2308,39 +2346,118 @@ class IdentityInheritanceTestCase(test_v3.RestfulTestCase):
         # Domain inherited role on domain1
         self.assignment_api.create_grant(user_id=user1['id'],
                                          domain_id=domain1['id'],
-                                         role_id=role_list[0]['id'],
+                                         role_id=role_list[1]['id'],
                                          inherited_to_projects=True)
+        # Domain role on domain2
+        self.assignment_api.create_grant(user_id=user1['id'],
+                                         domain_id=domain2['id'],
+                                         role_id=role_list[2]['id'])
         # Project inherited role on project2a
         self.assignment_api.create_grant(user_id=user1['id'],
                                          project_id=project2a['id'],
-                                         role_id=role_list[0]['id'],
+                                         role_id=role_list[3]['id'],
+                                         inherited_to_projects=True)
+        # Domain role on domain3
+        self.assignment_api.create_grant(user_id=user1['id'],
+                                         domain_id=domain3['id'],
+                                         role_id=role_list[4]['id'])
+        # Domain inherited role on domain3
+        self.assignment_api.create_grant(user_id=user1['id'],
+                                         domain_id=domain3['id'],
+                                         role_id=role_list[5]['id'],
+                                         inherited_to_projects=True)
+        # Direct role on project3a
+        self.assignment_api.create_grant(user_id=user1['id'],
+                                         project_id=project3a['id'],
+                                         role_id=role_list[6]['id'])
+        # Project inherited role on project3a
+        self.assignment_api.create_grant(user_id=user1['id'],
+                                         project_id=project3a['id'],
+                                         role_id=role_list[7]['id'],
                                          inherited_to_projects=True)
 
-        base_collection_url = (
-            '/OS-INHERIT/projects/%(project_id)s/users/%(user_id)s/roles' % {
-                'project_id': project0['id'],
-                'user_id': user1['id']})
-        collection_url = base_collection_url + '/inherited_to_projects'
+        # Domain 0
+        r = self.get(self._build_collection_url(user_id=user1['id'],
+                                                domain_id=domain0['id']))
+        self.assertValidRoleListResponse(r, expected_length=0)
 
-        r = self.get(collection_url)
-        self.assertValidRoleListResponse(r, ref=role_list[0])
+        r = self.get(self._build_collection_url(user_id=user1['id'],
+                                                project_id=project0['id']))
+        self.assertValidRoleListResponse(r, expected_length=0)
 
-        user_projects = self.assignment_api.list_projects_for_user(user1['id'])
-        user_projects = [p['id'] for p in user_projects]
-        self.assertEqual(7, len(user_projects))
+        r = self.get(self._build_collection_url(user_id=user1['id'],
+                                                project_id=subproject0['id']))
+        self.assertValidRoleListResponse(r, expected_length=0)
 
-        # In virtue of the direct role
-        self.assertIn(project0['id'], user_projects)
+        # Domain 1
+        r = self.get(self._build_collection_url(user_id=user1['id'],
+                                                domain_id=domain1['id']))
+        self.assertValidRoleListResponse(r, expected_length=1)
+        self.assertValidRoleListResponse(r, ref=role_list[1])
 
-        # In virtue of the domain inherited role
-        self.assertIn(project1a['id'], user_projects)
-        self.assertIn(subproject1a['id'], user_projects)
-        self.assertIn(project1b['id'], user_projects)
+        r = self.get(self._build_collection_url(user_id=user1['id'],
+                                                project_id=project1a['id']))
+        self.assertValidRoleListResponse(r, expected_length=1)
+        self.assertValidRoleListResponse(r, ref=role_list[1])
 
-        # In virtue of the project inherited role
-        self.assertIn(project2a['id'], user_projects)
-        self.assertIn(subproject2ab['id'], user_projects)
-        self.assertIn(subproject2a['id'], user_projects)
+        r = self.get(self._build_collection_url(user_id=user1['id'],
+                                                project_id=project1b['id']))
+        self.assertValidRoleListResponse(r, expected_length=1)
+        self.assertValidRoleListResponse(r, ref=role_list[1])
+
+        r = self.get(self._build_collection_url(user_id=user1['id'],
+                                                project_id=subproject1a['id']))
+        self.assertValidRoleListResponse(r, expected_length=1)
+        self.assertValidRoleListResponse(r, ref=role_list[1])
+
+        # Domain 2
+        r = self.get(self._build_collection_url(user_id=user1['id'],
+                                                domain_id=domain2['id']))
+        self.assertValidRoleListResponse(r, expected_length=0)
+
+        r = self.get(self._build_collection_url(user_id=user1['id'],
+                                                project_id=project2a['id']))
+        self.assertValidRoleListResponse(r, expected_length=1)
+        self.assertValidRoleListResponse(r, ref=role_list[3])
+
+        r = self.get(self._build_collection_url(user_id=user1['id'],
+                                                project_id=subproject2a['id']))
+        self.assertValidRoleListResponse(r, expected_length=1)
+        self.assertValidRoleListResponse(r, ref=role_list[3])
+
+        r = self.get(self._build_collection_url(user_id=user1['id'],
+                                                project_id=subproject2ab['id']))
+        self.assertValidRoleListResponse(r, expected_length=1)
+        self.assertValidRoleListResponse(r, ref=role_list[3])
+
+        # Domain 3
+        r = self.get(self._build_collection_url(user_id=user1['id'],
+                                                domain_id=domain3['id']))
+        self.assertValidRoleListResponse(r, expected_length=1)
+        self.assertValidRoleListResponse(r, ref=role_list[5])
+
+        r = self.get(self._build_collection_url(user_id=user1['id'],
+                                                project_id=project3a['id']))
+        self.assertValidRoleListResponse(r, expected_length=2)
+        self.assertValidRoleListResponse(r, ref=role_list[5])
+        self.assertValidRoleListResponse(r, ref=role_list[7])
+
+        r = self.get(self._build_collection_url(user_id=user1['id'],
+                                                project_id=project3b['id']))
+        self.assertValidRoleListResponse(r, expected_length=1)
+        self.assertValidRoleListResponse(r, ref=role_list[5])
+
+        r = self.get(self._build_collection_url(user_id=user1['id'],
+                                                project_id=subproject3a1['id']))
+        self.assertValidRoleListResponse(r, expected_length=2)
+        self.assertValidRoleListResponse(r, ref=role_list[5])
+        self.assertValidRoleListResponse(r, ref=role_list[7])
+
+        r = self.get(self._build_collection_url(user_id=user1['id'],
+                                                project_id=subproject3a2['id']))
+        self.assertValidRoleListResponse(r, expected_length=2)
+        self.assertValidRoleListResponse(r, ref=role_list[5])
+        self.assertValidRoleListResponse(r, ref=role_list[7])
 
 
 class IdentityInheritanceDisabledTestCase(test_v3.RestfulTestCase):

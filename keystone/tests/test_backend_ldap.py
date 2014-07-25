@@ -632,6 +632,25 @@ class BaseLDAPIdentity(test_backend.IdentityTests):
         # If this doesn't raise, then the test is successful.
         user = self.identity_api.create_user(user)
 
+    def test_unignored_user_none_mapping(self):
+        # Ensure that an attribute that maps to None that is not explicitly
+        # ignored in configuration is implicitly ignored without triggering
+        # an error.
+        conf = self.get_config(CONF.identity.default_domain_id)
+        conf.ldap.user_attribute_ignore = ['enabled', 'email',
+                                           'tenants', 'tenantId']
+        self.reload_backends(CONF.identity.default_domain_id)
+
+        user = {'name': u'fäké1',
+                'password': u'fäképass1',
+                'domain_id': CONF.identity.default_domain_id,
+                }
+
+        user_ref = self.identity_api.create_user(user)
+
+        # If this doesn't raise, then the test is successful.
+        self.identity_api.get_user(user_ref['id'])
+
     def test_update_user_name(self):
         """A user's name cannot be changed through the LDAP driver."""
         self.assertRaises(exception.Conflict,
@@ -1368,6 +1387,39 @@ class LDAPIdentity(BaseLDAPIdentity, tests.TestCase):
         self.assertRaises(exception.ProjectNotFound,
                           self.assignment_api.get_project,
                           project['id'])
+
+    def test_hierarchical_projects_crud(self):
+        self.skipTest('LDAP does not support hierarchical projects')
+
+    def test_list_project_parents(self):
+        self.skipTest('LDAP does not support hierarchical projects')
+
+    def test_list_project_children(self):
+        self.skipTest('LDAP does not support hierarchical projects')
+
+    def test_create_project_with_invalid_parent(self):
+        self.skipTest('LDAP does not support hierarchical projects')
+
+    def test_check_leaf_projects(self):
+        self.skipTest('LDAP does not support hierarchical projects')
+
+    def test_update_not_leaf_project_parent_project_id(self):
+        self.skipTest('LDAP does not support hierarchical projects')
+
+    def test_update_leaf_project_parent_project_id(self):
+        self.skipTest('LDAP does not support hierarchical projects')
+
+    def test_update_not_valid_parent_project_id(self):
+        self.skipTest('LDAP does not support hierarchical projects')
+
+    def test_update_none_parent_project_id(self):
+        self.skipTest('LDAP does not support hierarchical projects')
+
+    def test_delete_hierarchical_leaf_project(self):
+        self.skipTest('LDAP does not support hierarchical projects')
+
+    def test_delete_hierarchical_not_leaf_project(self):
+        self.skipTest('LDAP does not support hierarchical projects')
 
     @tests.skip_if_cache_disabled('assignment')
     def test_cache_layer_project_crud(self):

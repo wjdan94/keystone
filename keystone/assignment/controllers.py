@@ -405,8 +405,8 @@ class ProjectV3(controller.V3Controller):
         return ProjectV3.wrap_collection(context, refs, hints=hints)
 
     @controller.protected()
-    def get_project_hierarchy(self, project_id):
-        return self.assignment_api.get_project_hierarchy(project_id)
+    def list_project_parents_ids(self, context, project_id):
+        return self.assignment_api.list_project_parents_ids(project_id)
 
     @controller.filterprotected('enabled', 'name')
     def list_user_projects(self, context, filters, user_id):
@@ -488,6 +488,11 @@ class RoleV3(controller.V3Controller):
                 context['path'].startswith('/OS-INHERIT') and
                 context['path'].endswith('/inherited_to_projects'))
 
+    # TODO(afaranha) fix this method when remove the OS-INHERIT extension
+    def _check_if_inherited_roles(self, context):
+        return (CONF.os_inherit.enabled and
+                context['path'].endswith('/inherited_roles'))
+
     def _check_grant_protection(self, context, protection, role_id=None,
                                 user_id=None, group_id=None,
                                 domain_id=None, project_id=None):
@@ -538,8 +543,7 @@ class RoleV3(controller.V3Controller):
         if project_id is None:
             return []
 
-        hierarchy = self.assignment_api.get_project_hierarchy(project_id)
-        hierarchy = hierarchy.split('.')
+        hierarchy = self.assignment_api.list_project_parents(project_id)
         return self.assignment_api.list_grants_from_multiple_targets(
             context,
             user_id=user_id, group_id=group_id,
@@ -553,11 +557,9 @@ class RoleV3(controller.V3Controller):
         self._require_domain_xor_project(domain_id, project_id)
         self._require_user_xor_group(user_id, group_id)
 
-        refs = self.assignment_api.list_grants(
-            user_id, group_id, domain_id, project_id,
-            False)
-
-        if self._check_if_inherited(context):
+        refs = []
+        if self._check_if_inherited_roles(context) or \
+           self._check_if_inherited(context):
             if project_id:
                 project_ref = self.assignment_api.get_project(project_id)
                 domain_id = project_ref.get('domain_id')
@@ -568,6 +570,12 @@ class RoleV3(controller.V3Controller):
                                                                user_id,
                                                                group_id,
                                                                project_id)
+        if self._check_if_inherited_roles(context):
+            return RoleV3.wrap_collection(context, refs)
+
+        refs += self.assignment_api.list_grants(
+            user_id, group_id, domain_id, project_id,
+            False)
 
         return RoleV3.wrap_collection(context, refs)
 

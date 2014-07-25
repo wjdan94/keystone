@@ -26,11 +26,52 @@ from keystone.i18n import _
 CONF = config.CONF
 
 
+# class AssignmentType:
+#     USER_PROJECT = 'UserProject'
+#     GROUP_PROJECT = 'GroupProject'
+#     USER_DOMAIN = 'UserDomain'
+#     GROUP_DOMAIN = 'GroupDomain'
+
 class AssignmentType:
+    USER = "User"
+    GROUP = "Group"
+    PROJECT = "Project"
+    DOMAIN = "Domain"
+    
     USER_PROJECT = 'UserProject'
     GROUP_PROJECT = 'GroupProject'
     USER_DOMAIN = 'UserDomain'
     GROUP_DOMAIN = 'GroupDomain'
+    
+    def __init__(self, actorType=None, targetType=None):
+        self._actorType = None
+        self._targetType = None
+        self.setActorType(actorType)
+        self.setTargetType(targetType)
+    
+    def setActorType(self, actorType):
+        if self._isActorTypeValid(actorType):
+            self._actorType = actorType
+    
+    def setTargetType(self, targetType):
+        if self._isTargetTypeValid(targetType):
+            self._targetType = targetType
+
+    def getActorType(self):
+        return self._actorType
+
+    def getTargetType(self):
+        return self._targetType
+
+    def isValid(self):
+        return self.getActorType() is not None and \
+            self.getTargetType() is not None
+    
+    def _isActorTypeValid(self, actorType):
+        return self.USER == actorType or self.GROUP == actorType
+    
+    def _isTargetTypeValid(self, targetType):
+        return self.PROJECT == targetType or self.DOMAIN == targetType
 
 
 class Assignment(keystone_assignment.Driver):
@@ -56,17 +97,41 @@ class Assignment(keystone_assignment.Driver):
                 raise exception.ProjectNotFound(project_id=tenant_name)
             return project_ref.to_dict()
 
-    def get_project_hierarchy(self, tenant_id):
+    def _get_immediate_children(self, session, project_id):
+        query = session.query(Project)
+        query = query.filter_by(parent_project_id=project_id)
+        project_refs = query.all()
+        return [project_ref.to_dict() for project_ref in project_refs]
+
+    def list_project_parents(self, project_id):
         with sql.transaction() as session:
-            tenant = self._get_project(session, tenant_id).to_dict()
-            hierarchy = tenant['id']
-            while tenant['parent_project_id'] is not None:
-                parent_tenant = self._get_project(
-                    session, tenant['parent_project_id']).to_dict()
-                # NOTE Keep compatible with Vishy's code
-                hierarchy = parent_tenant['id'] + '.' + hierarchy
-                tenant = parent_tenant
+            project = self._get_project(session, project_id).to_dict()
+            hierarchy = [project['id']]
+            while project['parent_project_id'] is not None:
+                parent_project = self._get_project(
+                    session, project['parent_project_id']).to_dict()
+                hierarchy.append(parent_project['id'])
+                project = parent_project
             return hierarchy
+
+    def list_project_children(self, project_id):
+        with sql.transaction() as session:
+            project = self._get_project(session, project_id).to_dict()
+            children = []
+            queue = [project]
+            while queue:
+                project = queue.pop()
+                project_children = self._get_immediate_children(session,
+                                                                project['id'])
+                queue += project_children
+                children += project_children
+
+            return children
+
+    def is_leaf_project(self, project_id):
+        with sql.transaction() as session:
+            project_refs = self._get_immediate_children(session, project_id)
+            return not project_refs
 
     def list_user_ids_for_project(self, tenant_id):
         with sql.transaction() as session:
@@ -77,6 +142,28 @@ class Assignment(keystone_assignment.Driver):
             query = query.distinct('actor_id', 'target_id')
             assignments = query.all()
             return [assignment.actor_id for assignment in assignments]
+
+    def _calculate_assignment_type(self, user_id, group_id,
+                                   project_id, domain_id):
+        assignmenType = AssignmentType()
+
+        if user_id is not None:
+            assignmentType.setActorType(AssignmentType.USER)
+        elif group_id is not None:
+            assignmentType.setActorType(AssignmentType.GROUP)
+        if project_id is not None:
+            assignmentType.setTargetType(AssignmentType.PROJECT)
+        elif domain_id is not None:
+            assignmentType.setTargetType(AssignmentType.DOMAIN)
+
+        if not assignmenType.isValid():
+            message_data = ', '.join(
+                [user_id, group_id, project_id, domain_id])
+            raise exception.Error(message=_(
+                'Unexpected combination of grant attributes - '
+                'User, Group, Project, Domain: %s') % message_data)
+
+        return assignmenType
 
     def _get_metadata(self, user_id=None, tenant_id=None,
                       domain_id=None, group_id=None, session=None):
@@ -325,7 +412,7 @@ class Assignment(keystone_assignment.Driver):
         query = session.query(Project.id)
         projects = query.all()
         for p in projects:
-            if project_id in self.get_project_hierarchy(p):
+            if project_id in self.list_project_parents(p):
                 children_projects_id.add(p)
         return children_projects_id
 

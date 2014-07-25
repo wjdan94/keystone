@@ -137,6 +137,26 @@ def append_v3_routers(mapper, routers):
                    conditions=dict(method=['DELETE']))
 
     if config.CONF.os_inherit.enabled:
+        mapper.connect('/OS-INHERIT/projects/{project_id}/users/{user_id}'
+                       '/roles/inherited_roles',
+                       controller=role_controller,
+                       action='list_grants',
+                       conditions=dict(method=['GET']))
+        mapper.connect('/OS-INHERIT/projects/{project_id}/groups/{group_id}'
+                       '/roles/inherited_roles',
+                       controller=role_controller,
+                       action='list_grants',
+                       conditions=dict(method=['GET']))
+        mapper.connect('/OS-INHERIT/domains/{domain_id}/users/{user_id}'
+                       '/roles/inherited_roles',
+                       controller=role_controller,
+                       action='list_grants',
+                       conditions=dict(method=['GET']))
+        mapper.connect('/OS-INHERIT/domains/{domain_id}/groups/{group_id}'
+                       '/roles/inherited_roles',
+                       controller=role_controller,
+                       action='list_grants',
+                       conditions=dict(method=['GET']))
         mapper.connect(('/OS-INHERIT/projects/{project_id}/users/{user_id}'
                         '/roles/{role_id}/inherited_to_projects'),
                        controller=role_controller,

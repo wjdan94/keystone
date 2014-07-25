@@ -77,9 +77,11 @@ class Manager(manager.Manager):
         tenant['enabled'] = clean.project_enabled(tenant['enabled'])
         tenant.setdefault('description', '')
         tenant.setdefault('parent_project_id', None)
+
         if 'parent_project_id' in tenant:
             if tenant['parent_project_id'] is not None:
                 self.driver.get_project(tenant['parent_project_id'])
+
         ret = self.driver.create_project(tenant_id, tenant)
         if SHOULD_CACHE(ret):
             self.get_project.set(ret, self, tenant_id)
@@ -118,6 +120,19 @@ class Manager(manager.Manager):
     def update_project(self, tenant_id, tenant):
         original_tenant = self.driver.get_project(tenant_id)
         tenant = tenant.copy()
+
+        if ('parent_project_id' in tenant and
+                tenant['parent_project_id'] !=
+                original_tenant['parent_project_id']):
+
+            if self.driver.is_leaf_project(tenant_id):
+                parent_project_id = tenant['parent_project_id']
+                if parent_project_id is not None:
+                    self.driver.get_project(parent_project_id)
+            else:
+                raise exception.ForbiddenAction(
+                    action=_('cannot update parent_project_id from a project '
+                             'that is not a leaf in the hierarchy.'))
         if 'enabled' in tenant:
             tenant['enabled'] = clean.project_enabled(tenant['enabled'])
         if (original_tenant.get('enabled', True) and
@@ -131,6 +146,11 @@ class Manager(manager.Manager):
 
     @notifications.deleted(_PROJECT)
     def delete_project(self, tenant_id):
+        if not self.driver.is_leaf_project(tenant_id):
+            raise exception.ForbiddenAction(
+                action=_('cannot delete a project that is not a leaf '
+                         'in the hierarchy.'))
+
         project = self.driver.get_project(tenant_id)
         user_ids = self.list_user_ids_for_project(tenant_id)
         self.token_api.delete_tokens_for_users(user_ids, project_id=tenant_id)
@@ -526,17 +546,19 @@ class Manager(manager.Manager):
         return self.driver.list_user_projects(
             user_id, hints or driver_hints.Hints())
 
-    # NOTE(tellesnobrega): get_project_hierarchy is actually an internal
-    # method and not exposed via the API. Therefore there is no need to
-    # support driver hints for it.
-    def get_project_hierarchy(self, project_id):
-        return self.driver.get_project_hierarchy(project_id)
-
     def list_grants_from_multiple_targets(self, context, user_id=None,
                                           group_id=None, targets_ids=None,
                                           inherited_to_projects=False):
         return self.driver.list_grants_from_multiple_targets(
             context, user_id, group_id, targets_ids, inherited_to_projects)
+    # NOTE(tellesnobrega): list_project_parents is actually an internal
+    # method and not exposed via the API. Therefore there is no need to
+    # support driver hints for it.
+    def list_project_parents(self, project_id):
+        return self.driver.list_project_parents(project_id)
+
+    def list_project_children(self, project_id):
+        return self.driver.list_project_children(project_id)
 
     @cache.on_arguments(should_cache_fn=SHOULD_CACHE,
                         expiration_time=EXPIRATION_TIME)
@@ -714,7 +736,7 @@ class Driver(object):
         role_list = []
         for d in dict_list:
             if ((not d.get('inherited_to') and not inherited) or
-               (d.get('inherited_to') == 'projects' and inherited)):
+                    (d.get('inherited_to') == 'projects' and inherited)):
                 role_list.append(d['id'])
         return role_list
 
@@ -975,10 +997,29 @@ class Driver(object):
         raise exception.NotImplemented()  # pragma: no cover
 
     @abc.abstractmethod
-    def get_project_hierarchy(self, project_id):
-        """Get a project hierarchy by ID.
+    def list_project_parents(self, project_id):
+        """List all parents from a project by its ID.
 
-        :returns: project_ref
+        :returns: a list of project_refs or an empty list
+        :raises: keystone.exception.ProjectNotFound
+
+        """
+        raise exception.NotImplemented()
+
+    @abc.abstractmethod
+    def list_project_children(self, project_id):
+        """List all children from a project by its ID.
+
+        :returns: a list of project_refs or an empty list
+        :raises: keystone.exception.ProjectNotFound
+
+        """
+        raise exception.NotImplemented()
+
+    @abc.abstractmethod
+    def is_leaf_project(self, project_id):
+        """Checks if a project is a leaf in the hierarchy.
+
         :raises: keystone.exception.ProjectNotFound
 
         """
