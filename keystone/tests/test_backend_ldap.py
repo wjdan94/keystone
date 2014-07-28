@@ -1421,6 +1421,21 @@ class LDAPIdentity(BaseLDAPIdentity, tests.TestCase):
     def test_delete_hierarchical_not_leaf_project(self):
         self.skipTest('LDAP does not support hierarchical projects')
 
+    def test_create_project_depth_0(self):
+        self.skipTest('LDAP does not support hierarchical projects')
+
+    def test_create_project_depth_3(self):
+        self.skipTest('LDAP does not support hierarchical projects')
+
+    def test_create_project_depth_not_allowed(self):
+        self.skipTest('LDAP does not support hierarchical projects')
+
+    def test_update_project_depth_3(self):
+        self.skipTest('LDAP does not support hierarchical projects')
+
+    def test_update_project_depth_not_allowed(self):
+        self.skipTest('LDAP does not support hierarchical projects')
+
     @tests.skip_if_cache_disabled('assignment')
     def test_cache_layer_project_crud(self):
         # NOTE(morganfainberg): LDAP implementation does not currently support

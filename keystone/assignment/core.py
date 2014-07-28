@@ -343,6 +343,29 @@ class Manager(manager.Manager):
         # Use set() to process the list to remove any duplicates
         return list(set(user_role_list + group_role_list))
 
+    def get_grant(self, role_id, user_id=None, group_id=None,
+                  domain_id=None, project_id=None,
+                  inherited_to_projects=False):
+        if project_id:
+            project_id = [project_id]
+            if inherited_to_projects:
+                project_id += [x['id'] for x in self.list_project_parents(project_id[0])]
+                project_id.append(self.get_project(project_id[0])['domain_id'])
+
+        return self.driver.get_grant(role_id, user_id, group_id, domain_id,
+                                       project_id, inherited_to_projects)
+
+    def list_grants(self, user_id=None, group_id=None, domain_id=None,
+                    project_id=None, inherited_to_projects=False):
+        if project_id:
+            project_id = [project_id]
+            if inherited_to_projects:
+                project_id += [x['id'] for x in self.list_project_parents(project_id[0])]
+                project_id.append(self.get_project(project_id[0])['domain_id'])
+
+        return self.driver.list_grants(user_id, group_id, domain_id,
+                                       project_id, inherited_to_projects)
+
     def add_user_to_project(self, tenant_id, user_id):
         """Add user to a tenant by creating a default role relationship.
 
@@ -546,11 +569,6 @@ class Manager(manager.Manager):
         return self.driver.list_user_projects(
             user_id, hints or driver_hints.Hints())
 
-    def list_grants_from_multiple_targets(self, context, user_id=None,
-                                          group_id=None, targets_ids=None,
-                                          inherited_to_projects=False):
-        return self.driver.list_grants_from_multiple_targets(
-            context, user_id, group_id, targets_ids, inherited_to_projects)
     # NOTE(tellesnobrega): list_project_parents is actually an internal
     # method and not exposed via the API. Therefore there is no need to
     # support driver hints for it.
@@ -837,20 +855,6 @@ class Driver(object):
 
         """
         raise exception.NotImplemented()  # pragma: no cover
-
-    @abc.abstractmethod
-    def list_grants_from_multiple_targets(self, context, user_id=None,
-                                          group_id=None, targets_ids=None,
-                                          inherited_to_projects=False):
-        """Lists assignments/grants for multiple targets.
-
-        :raises: keystone.exception.UserNotFound,
-                 keystone.exception.GroupNotFound,
-                 keystone.exception.TargetNotFound,
-                 keystone.exception.RoleNotFound
-
-        """
-        raise exception.NotImplemented()
 
     @abc.abstractmethod
     def get_grant(self, role_id, user_id=None, group_id=None,

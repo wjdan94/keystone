@@ -2529,17 +2529,13 @@ class IdentityTests(object):
         self.assignment_api.create_project(project3['id'], project3)
 
         parents = self.assignment_api.list_project_parents(project3['id'])
-        # self.assertEqual(2, len(parents))
-        # self.assertIn(project1, parents)
-        # self.assertIn(project2, parents)
-        self.assertEqual(3, len(parents))
-        self.assertIn(project1['id'], parents)
-        self.assertIn(project2['id'], parents)
-        self.assertIn(project3['id'], parents)
+
+        self.assertEqual(2, len(parents))
+        self.assertIn(project1, parents)
+        self.assertIn(project2, parents)
 
         parents = self.assignment_api.list_project_parents(project1['id'])
-        # self.assertEqual(0, len(parents))
-        self.assertEqual(1, len(parents))
+        self.assertEqual(0, len(parents))
 
     def test_list_project_children(self):
         project1 = {'id': uuid.uuid4().hex,
@@ -2786,6 +2782,189 @@ class IdentityTests(object):
 
         project_ref = self.assignment_api.get_project(project['id'])
         self.assertDictEqual(project_ref, project)
+
+    def test_create_project_depth_0(self):
+        tenant_id = uuid.uuid4().hex
+        tenant1 = {
+            'id': tenant_id,
+            'name': uuid.uuid4().hex,
+            'domain_id': DEFAULT_DOMAIN_ID}
+        ref = self.assignment_api.create_project(tenant_id, tenant1)
+        depth = self.assignment_api._get_project_depth(ref['id'])
+        self.assertEqual(1, depth)
+
+    def test_create_project_depth_3(self):
+        tenant_id = uuid.uuid4().hex
+        tenant1 = {
+            'id': tenant_id,
+            'name': uuid.uuid4().hex,
+            'domain_id': DEFAULT_DOMAIN_ID}
+        ref = self.assignment_api.create_project(tenant_id, tenant1)
+
+        tenant_id = uuid.uuid4().hex
+        tenant2 = {
+            'id': tenant_id,
+            'name': uuid.uuid4().hex,
+            'domain_id': DEFAULT_DOMAIN_ID,
+            'parent_project_id': tenant1['id']}
+        ref = self.assignment_api.create_project(tenant_id, tenant2)
+
+        tenant_id = uuid.uuid4().hex
+        tenant3 = {
+            'id': tenant_id,
+            'name': uuid.uuid4().hex,
+            'domain_id': DEFAULT_DOMAIN_ID,
+            'parent_project_id': tenant2['id']}
+        ref = self.assignment_api.create_project(tenant_id, tenant3)
+        depth = self.assignment_api._get_project_depth(ref['id'])
+        self.assertEqual(3, depth)
+
+    def test_create_project_depth_not_allowed(self):
+        """This test verifies if 'CONF.max_project_tree_depth' is beeing
+         verified on creating projects. The default value for this conf
+         is 5 so, given that the root of the hierarchy if level 0, we'll
+         reach the level 5 on the 6th project
+        """
+        tenant_id = uuid.uuid4().hex
+        tenant1 = {
+            'id': tenant_id,
+            'name': uuid.uuid4().hex,
+            'domain_id': DEFAULT_DOMAIN_ID}
+        self.assignment_api.create_project(tenant_id, tenant1)
+
+        tenant_id = uuid.uuid4().hex
+        tenant2 = {
+            'id': tenant_id,
+            'name': uuid.uuid4().hex,
+            'domain_id': DEFAULT_DOMAIN_ID,
+            'parent_project_id': tenant1['id']}
+        self.assignment_api.create_project(tenant_id, tenant2)
+
+        tenant_id = uuid.uuid4().hex
+        tenant3 = {
+            'id': tenant_id,
+            'name': uuid.uuid4().hex,
+            'domain_id': DEFAULT_DOMAIN_ID,
+            'parent_project_id': tenant2['id']}
+        self.assignment_api.create_project(tenant_id, tenant3)
+
+        tenant_id = uuid.uuid4().hex
+        tenant4 = {
+            'id': tenant_id,
+            'name': uuid.uuid4().hex,
+            'domain_id': DEFAULT_DOMAIN_ID,
+            'parent_project_id': tenant3['id']}
+        self.assignment_api.create_project(tenant_id, tenant4)
+
+        tenant_id = uuid.uuid4().hex
+        tenant5 = {
+            'id': tenant_id,
+            'name': uuid.uuid4().hex,
+            'domain_id': DEFAULT_DOMAIN_ID,
+            'parent_project_id': tenant4['id']}
+        self.assignment_api.create_project(tenant_id, tenant5)
+
+        tenant_id = uuid.uuid4().hex
+        tenant6 = {
+            'id': tenant_id,
+            'name': uuid.uuid4().hex,
+            'domain_id': DEFAULT_DOMAIN_ID,
+            'parent_project_id': tenant5['id']}
+        self.assertRaises(exception.Error,
+                          self.assignment_api.create_project,
+                          tenant_id,
+                          tenant6)
+
+    def test_update_project_depth_3(self):
+        """This test verifies if 'CONF.max_project_tree_depth' is beeing
+         verified on updating projects. The default value for this conf
+         is 5 so, given that the root of the hierarchy if level 0, we'll
+         reach the level 5 on the 6th project
+        """
+        tenant_id = uuid.uuid4().hex
+        tenant1 = {
+            'id': tenant_id,
+            'name': uuid.uuid4().hex,
+            'domain_id': DEFAULT_DOMAIN_ID}
+        self.assignment_api.create_project(tenant_id, tenant1)
+
+        tenant_id = uuid.uuid4().hex
+        tenant2 = {
+            'id': tenant_id,
+            'name': uuid.uuid4().hex,
+            'domain_id': DEFAULT_DOMAIN_ID,
+            'parent_project_id': tenant1['id']}
+        self.assignment_api.create_project(tenant_id, tenant2)
+
+        tenant_id = uuid.uuid4().hex
+        tenant_move = {
+            'id': tenant_id,
+            'name': uuid.uuid4().hex,
+            'domain_id': DEFAULT_DOMAIN_ID}
+        self.assignment_api.create_project(tenant_id, tenant_move)
+        depth = self.assignment_api._get_project_depth(tenant_move['id'])
+        self.assertEqual(1, depth)
+        update = {'parent_project_id': tenant2['id']}
+        self.assignment_api.update_project(tenant_id, update)
+        depth = self.assignment_api._get_project_depth(tenant_move['id'])
+        self.assertEqual(3, depth)
+
+    def test_update_project_depth_not_allowed(self):
+        """This test verifies if 'CONF.max_project_tree_depth' is beeing
+         verified on updating projects. The default value for this conf
+         is 5 so, given that the root of the hierarchy if level 0, we'll
+         reach the level 5 on the 6th project
+        """
+        tenant_id = uuid.uuid4().hex
+        tenant1 = {
+            'id': tenant_id,
+            'name': uuid.uuid4().hex,
+            'domain_id': DEFAULT_DOMAIN_ID}
+        self.assignment_api.create_project(tenant_id, tenant1)
+
+        tenant_id = uuid.uuid4().hex
+        tenant2 = {
+            'id': tenant_id,
+            'name': uuid.uuid4().hex,
+            'domain_id': DEFAULT_DOMAIN_ID,
+            'parent_project_id': tenant1['id']}
+        self.assignment_api.create_project(tenant_id, tenant2)
+
+        tenant_id = uuid.uuid4().hex
+        tenant3 = {
+            'id': tenant_id,
+            'name': uuid.uuid4().hex,
+            'domain_id': DEFAULT_DOMAIN_ID,
+            'parent_project_id': tenant2['id']}
+        self.assignment_api.create_project(tenant_id, tenant3)
+
+        tenant_id = uuid.uuid4().hex
+        tenant4 = {
+            'id': tenant_id,
+            'name': uuid.uuid4().hex,
+            'domain_id': DEFAULT_DOMAIN_ID,
+            'parent_project_id': tenant3['id']}
+        self.assignment_api.create_project(tenant_id, tenant4)
+
+        tenant_id = uuid.uuid4().hex
+        tenant5 = {
+            'id': tenant_id,
+            'name': uuid.uuid4().hex,
+            'domain_id': DEFAULT_DOMAIN_ID,
+            'parent_project_id': tenant4['id']}
+        self.assignment_api.create_project(tenant_id, tenant5)
+
+        tenant_id = uuid.uuid4().hex
+        tenant_move = {
+            'id': tenant_id,
+            'name': uuid.uuid4().hex,
+            'domain_id': DEFAULT_DOMAIN_ID}
+        self.assignment_api.create_project(tenant_id, tenant_move)
+
+        self.assertRaises(exception.Error,
+                          self.assignment_api.update_project,
+                          tenant_id,
+                          {'parent_project_id': tenant5['id']})
 
     def test_domain_crud(self):
         domain = {'id': uuid.uuid4().hex, 'name': uuid.uuid4().hex,

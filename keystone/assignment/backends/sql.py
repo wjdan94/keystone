@@ -106,11 +106,11 @@ class Assignment(keystone_assignment.Driver):
     def list_project_parents(self, project_id):
         with sql.transaction() as session:
             project = self._get_project(session, project_id).to_dict()
-            hierarchy = [project['id']]
+            hierarchy = []
             while project['parent_project_id'] is not None:
                 parent_project = self._get_project(
                     session, project['parent_project_id']).to_dict()
-                hierarchy.append(parent_project['id'])
+                hierarchy.append(parent_project)
                 project = parent_project
             return hierarchy
 
@@ -258,38 +258,30 @@ class Assignment(keystone_assignment.Driver):
             if domain_id:
                 self._get_domain(session, domain_id)
             if project_id:
-                self._get_project(session, project_id)
+                self._get_project(session, project_id[0])
 
-            q = session.query(Role).join(RoleAssignment)
-            q = q.filter(RoleAssignment.actor_id == (user_id or group_id))
-            q = q.filter(RoleAssignment.target_id == (project_id or domain_id))
-            q = q.filter(RoleAssignment.inherited == inherited_to_projects)
-            q = q.filter(Role.id == RoleAssignment.role_id)
-            return [x.to_dict() for x in q.all()]
+            q = self._build_grant_filter(
+                    session, None, user_id or group_id, domain_id or project_id,
+                    inherited_to_projects)
 
-    def list_grants_from_multiple_targets(self, context, user_id=None,
-                                          group_id=None, targets_ids=None,
-                                          inherited_to_projects=False):
-        with sql.transaction() as session:
-            q = session.query(RoleAssignment)
-            q = q.filter_by(actor_id=user_id or group_id)
-            q = q.filter(RoleAssignment.target_id.in_(targets_ids))
-            q = q.filter_by(inherited=inherited_to_projects)
+            grants = [x.to_dict() for x in q.all()]
 
-            roles_ids = [x.role_id for x in q.all()]
-
+            roles_ids=[x['role_id'] for x in grants]
             q = session.query(Role)
             q = q.filter(Role.id.in_(roles_ids))
 
             return [x.to_dict() for x in q.all()]
 
-    def _build_grant_filter(self, session, role_id, user_id, group_id,
-                            domain_id, project_id, inherited_to_projects):
+    def _build_grant_filter(self, session, role_id, actor_id,
+                            target_id, inherited_to_projects):
         q = session.query(RoleAssignment)
-        q = q.filter_by(actor_id=user_id or group_id)
-        q = q.filter_by(target_id=project_id or domain_id)
-        q = q.filter_by(role_id=role_id)
-        q = q.filter_by(inherited=inherited_to_projects)
+        q = q.filter_by(actor_id=actor_id)
+        if isinstance(targets_ids, list):
+            q = q.filter(RoleAssignment.target_id.in_(target_id))
+        else:
+            q = q.filter_by(target_id=target_id)
+        q = q.filter_by(role_id=role_id) if role_id else q
+        q = q.filter_by(inherited=inherited_to_projects) if inherited_to_projects is not None else q
         return q
 
     def get_grant(self, role_id, user_id=None, group_id=None,
@@ -304,7 +296,7 @@ class Assignment(keystone_assignment.Driver):
 
             try:
                 q = self._build_grant_filter(
-                    session, role_id, user_id, group_id, domain_id, project_id,
+                    session, role_id, user_id or group_id, domain_id or project_id,
                     inherited_to_projects)
                 q.one()
             except sql.NotFound:
@@ -541,11 +533,25 @@ class Assignment(keystone_assignment.Driver):
             refs = session.query(RoleAssignment).all()
             return [denormalize_role(ref) for ref in refs]
 
+    def _get_project_depth(self, tenant_id):
+        return (len(self.list_project_parents(tenant_id)) + 1)
+
     # CRUD
     @sql.handle_conflicts(conflict_type='project')
     def create_project(self, tenant_id, tenant):
         tenant['name'] = clean.project_name(tenant['name'])
         with sql.transaction() as session:
+            # Verify if the level doesn't exceed the maximum tree depth
+            # configured on keystone.conf
+            parent_project_id = tenant.get('parent_project_id', None)
+            if parent_project_id:
+                if (self._get_project_depth(parent_project_id) >=
+                        CONF.max_project_tree_depth):
+                    msg = _("Project cannot be created: "
+                            "max project-tree depth exceeded "
+                            "on this branch.")
+                    raise exception.Error(message=msg)
+
             tenant_ref = Project.from_dict(tenant)
             tenant_ref.name = tenant['name']
             session.add(tenant_ref)
@@ -559,6 +565,19 @@ class Assignment(keystone_assignment.Driver):
         with sql.transaction() as session:
             tenant_ref = self._get_project(session, tenant_id)
             old_project_dict = tenant_ref.to_dict()
+            # if moving, check if the tree depth on the destiny allows moving
+            new_parent_id = tenant.get('parent_project_id', None)
+            if new_parent_id:
+                old_parent_id = old_project_dict.get('parent_project_id', None)
+
+                if (old_parent_id != new_parent_id and
+                        self._get_project_depth(new_parent_id) >=
+                        CONF.max_project_tree_depth):
+                    msg = _("Project cannot be updated: "
+                            "max project-tree depth exceeded "
+                            "on destiny's branch.")
+                    raise exception.Error(message=msg)
+
             for k in tenant:
                 old_project_dict[k] = tenant[k]
             new_project = Project.from_dict(old_project_dict)

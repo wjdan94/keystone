@@ -80,10 +80,10 @@ class Assignment(kvs.Base, assignment.Driver):
 
     def list_project_parents(self, project_id):
         project_ref = self.get_project(project_id)
-        hierarchy = [project_id]
+        hierarchy = []
         while project_ref['parent_project_id'] is not None:
             parent_project = self.get_project(project_ref['parent_project_id'])
-            hierarchy.append(parent_project['id'])
+            hierarchy.append(parent_project)
             project_ref = parent_project
         return hierarchy
 
@@ -329,6 +329,9 @@ class Assignment(kvs.Base, assignment.Driver):
 
         return assignment_list
 
+    def _get_project_depth(self, tenant_id):
+        return (len(self.list_project_parents(tenant_id)) + 1)
+
     # CRUD
     def create_project(self, tenant_id, tenant):
         tenant['name'] = clean.project_name(tenant['name'])
@@ -347,6 +350,16 @@ class Assignment(kvs.Base, assignment.Driver):
         else:
             msg = 'Duplicate name, %s.' % tenant['name']
             raise exception.Conflict(type='tenant', details=msg)
+        # Verify if the level doesn't exceed the maximum tree depth
+        # configured on keystone.conf
+        parent_project_id = tenant.get('parent_project_id', None)
+        if parent_project_id:
+            if (self._get_project_depth(parent_project_id) >=
+                    CONF.max_project_tree_depth):
+                msg = _("Project cannot be created: "
+                        "max project-tree depth exceeded "
+                        "on this branch.")
+                raise exception.Error(message=msg)
 
         self.db.set('tenant-%s' % tenant_id, tenant)
         self.db.set('tenant_name-%s' % tenant['name'], tenant)
@@ -367,6 +380,19 @@ class Assignment(kvs.Base, assignment.Driver):
             old_project = self.db.get('tenant-%s' % tenant_id)
         except exception.NotFound:
             raise exception.ProjectNotFound(project_id=tenant_id)
+        # if moving, check if the tree depth on the destiny allows moving
+        new_parent_id = tenant.get('parent_project_id', None)
+        if new_parent_id:
+            old_parent_id = old_project.get('parent_project_id', None)
+
+            if (old_parent_id != new_parent_id and
+                    self._get_project_depth(new_parent_id) >=
+                    CONF.max_project_tree_depth):
+                msg = _("Project cannot be updated: "
+                        "max project-tree depth exceeded "
+                        "on destiny's branch.")
+                raise exception.Error(message=msg)
+
         new_project = old_project.copy()
         new_project.update(tenant)
         new_project['id'] = tenant_id

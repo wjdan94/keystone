@@ -488,11 +488,6 @@ class RoleV3(controller.V3Controller):
                 context['path'].startswith('/OS-INHERIT') and
                 context['path'].endswith('/inherited_to_projects'))
 
-    # TODO(afaranha) fix this method when remove the OS-INHERIT extension
-    def _check_if_inherited_roles(self, context):
-        return (CONF.os_inherit.enabled and
-                context['path'].endswith('/inherited_roles'))
-
     def _check_grant_protection(self, context, protection, role_id=None,
                                 user_id=None, group_id=None,
                                 domain_id=None, project_id=None):
@@ -529,27 +524,6 @@ class RoleV3(controller.V3Controller):
             role_id, user_id, group_id, domain_id, project_id,
             self._check_if_inherited(context))
 
-    def _get_inherited_roles_from_domain(self, user_id, group_id, domain_id):
-        self._require_user_xor_group(user_id, group_id)
-        if domain_id is None:
-            return []
-
-        return self.assignment_api.list_grants(user_id, group_id, domain_id,
-                                               None, True)
-
-    def _get_inherited_roles_from_parents(self, context, user_id, group_id,
-                                          project_id):
-        self._require_user_xor_group(user_id, group_id)
-        if project_id is None:
-            return []
-
-        hierarchy = self.assignment_api.list_project_parents(project_id)
-        return self.assignment_api.list_grants_from_multiple_targets(
-            context,
-            user_id=user_id, group_id=group_id,
-            targets_ids=hierarchy,
-            inherited_to_projects=True)
-
     @controller.protected(callback=_check_grant_protection)
     def list_grants(self, context, user_id=None,
                     group_id=None, domain_id=None, project_id=None):
@@ -557,25 +531,22 @@ class RoleV3(controller.V3Controller):
         self._require_domain_xor_project(domain_id, project_id)
         self._require_user_xor_group(user_id, group_id)
 
-        refs = []
-        if self._check_if_inherited_roles(context) or \
-           self._check_if_inherited(context):
-            if project_id:
-                project_ref = self.assignment_api.get_project(project_id)
-                domain_id = project_ref.get('domain_id')
-            refs += self._get_inherited_roles_from_domain(user_id, group_id,
-                                                          domain_id)
-            if project_id is not None:
-                refs += self._get_inherited_roles_from_parents(context,
-                                                               user_id,
-                                                               group_id,
-                                                               project_id)
-        if self._check_if_inherited_roles(context):
-            return RoleV3.wrap_collection(context, refs)
+        if self._check_if_inherited(context):
+            refs += self.assignment_api.list_grants(
+                user_id, group_id, domain_id, project_id,
+                True)
 
-        refs += self.assignment_api.list_grants(
-            user_id, group_id, domain_id, project_id,
-            False)
+            if not ('children' in context['query_string'] and \
+                self._query_filter_is_true(context['query_string']
+                                           ['children'])):
+                refs += self.assignment_api.list_grants(
+                    user_id, group_id, domain_id, project_id,
+                    False)
+        else:
+            refs = self.assignment_api.list_grants(
+                user_id, group_id, domain_id, project_id,
+                None)
+
 
         return RoleV3.wrap_collection(context, refs)
 
@@ -586,9 +557,20 @@ class RoleV3(controller.V3Controller):
         self._require_domain_xor_project(domain_id, project_id)
         self._require_user_xor_group(user_id, group_id)
 
-        self.assignment_api.get_grant(
-            role_id, user_id, group_id, domain_id, project_id,
-            self._check_if_inherited(context))
+
+        if self._check_if_inherited(context):
+            try:
+                self.assignment_api.get_grant(
+                    role_id, user_id, group_id, domain_id, project_id,
+                    True)
+            except exception.RoleNotFound:
+                self.assignment_api.get_grant(
+                    role_id, user_id, group_id, domain_id, project_id,
+                    False)
+        else:
+            self.assignment_api.get_grant(
+                user_id, group_id, domain_id, project_id,
+                None)
 
     @controller.protected(callback=_check_grant_protection)
     def revoke_grant(self, context, role_id, user_id=None,
