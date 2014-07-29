@@ -528,25 +528,25 @@ class RoleV3(controller.V3Controller):
     def list_grants(self, context, user_id=None,
                     group_id=None, domain_id=None, project_id=None):
         """Lists roles granted to user/group on either a domain or project."""
+
+        def is_inheritable(context):
+            return 'inheritable' in context['query_string'] and \
+                self._query_filter_is_true(context['query_string']
+                                           ['inheritable'])
+
         self._require_domain_xor_project(domain_id, project_id)
         self._require_user_xor_group(user_id, group_id)
 
         if self._check_if_inherited(context):
-            refs += self.assignment_api.list_grants(
-                user_id, group_id, domain_id, project_id,
-                True)
-
-            if not ('children' in context['query_string'] and \
-                self._query_filter_is_true(context['query_string']
-                                           ['children'])):
-                refs += self.assignment_api.list_grants(
-                    user_id, group_id, domain_id, project_id,
-                    False)
+            refs = self.assignment_api.list_inheritable_grants(
+                user_id, group_id, domain_id, project_id)
+            if not is_inheritable(context):
+                direct_grants = self.assignment_api.list_direct_grants(
+                    user_id, group_id, domain_id, project_id)
+                refs = list(set(direct_grants + refs))
         else:
-            refs = self.assignment_api.list_grants(
-                user_id, group_id, domain_id, project_id,
-                None)
-
+            refs = self.assignment_api.list_direct_grants(
+                user_id, group_id, domain_id, project_id)
 
         return RoleV3.wrap_collection(context, refs)
 
@@ -557,20 +557,12 @@ class RoleV3(controller.V3Controller):
         self._require_domain_xor_project(domain_id, project_id)
         self._require_user_xor_group(user_id, group_id)
 
-
         if self._check_if_inherited(context):
-            try:
-                self.assignment_api.get_grant(
-                    role_id, user_id, group_id, domain_id, project_id,
-                    True)
-            except exception.RoleNotFound:
-                self.assignment_api.get_grant(
-                    role_id, user_id, group_id, domain_id, project_id,
-                    False)
+            self.assignment_api.get_inheritable_grant(
+                user_id, group_id, domain_id, project_id)
         else:
-            self.assignment_api.get_grant(
-                user_id, group_id, domain_id, project_id,
-                None)
+            self.assignment_api.get_direct_grant(
+                user_id, group_id, domain_id, project_id)
 
     @controller.protected(callback=_check_grant_protection)
     def revoke_grant(self, context, role_id, user_id=None,

@@ -252,52 +252,59 @@ class Assignment(keystone_assignment.Driver):
             pass
 
     def list_grants(self, user_id=None, group_id=None,
-                    domain_id=None, project_id=None,
+                    domain_id=None, projects_ids=None,
                     inherited_to_projects=False):
         with sql.transaction() as session:
             if domain_id:
                 self._get_domain(session, domain_id)
-            if project_id:
-                self._get_project(session, project_id[0])
+            if projects_ids:
+                self._get_project(session, projects_ids[0])
 
             q = self._build_grant_filter(
-                    session, None, user_id or group_id, domain_id or project_id,
-                    inherited_to_projects)
+                session=session, role_id=None,
+                actor_id=user_id or group_id, domain_id=domain_id,
+                projects_ids=projects_ids,
+                inherited_to_projects=inherited_to_projects)
 
             grants = [x.to_dict() for x in q.all()]
 
-            roles_ids=[x['role_id'] for x in grants]
+            roles_ids = [x['role_id'] for x in grants]
             q = session.query(Role)
             q = q.filter(Role.id.in_(roles_ids))
 
-            return [x.to_dict() for x in q.all()]
+            return list(set([x.to_dict() for x in q.all()]))
 
     def _build_grant_filter(self, session, role_id, actor_id,
-                            target_id, inherited_to_projects):
+                            domain_id=None, projects_ids=None,
+                            inherited_to_projects=False):
         q = session.query(RoleAssignment)
         q = q.filter_by(actor_id=actor_id)
-        if isinstance(targets_ids, list):
-            q = q.filter(RoleAssignment.target_id.in_(target_id))
-        else:
-            q = q.filter_by(target_id=target_id)
+
+        targets_ids = projects_ids + [domain_id] \
+            if projects_ids else [domain_id]
+        q = q.filter(RoleAssignment.target_id.in_(targets_ids))
+
         q = q.filter_by(role_id=role_id) if role_id else q
-        q = q.filter_by(inherited=inherited_to_projects) if inherited_to_projects is not None else q
+        q = q.filter_by(inherited=inherited_to_projects) \
+            if inherited_to_projects is not None else q
         return q
 
     def get_grant(self, role_id, user_id=None, group_id=None,
-                  domain_id=None, project_id=None,
+                  domain_id=None, projects_ids=None,
                   inherited_to_projects=False):
         with sql.transaction() as session:
             role_ref = self._get_role(session, role_id)
             if domain_id:
                 self._get_domain(session, domain_id)
-            if project_id:
-                self._get_project(session, project_id)
+            if projects_ids:
+                self._get_project(session, projects_ids[0])
 
             try:
                 q = self._build_grant_filter(
-                    session, role_id, user_id or group_id, domain_id or project_id,
-                    inherited_to_projects)
+                    session=session, role_id=role_id,
+                    actor_id=user_id or group_id, domain_id=domain_id,
+                    projects_ids=projects_ids,
+                    inherited_to_projects=inherited_to_projects)
                 q.one()
             except sql.NotFound:
                 raise exception.RoleNotFound(role_id=role_id)

@@ -25,7 +25,7 @@ CONF = config.CONF
 
 class Assignment(kvs.Base, assignment.Driver):
     """KVS Assignment backend.
-
+get_grant
     This backend uses the following mappings to store data:
 
     * Domains:
@@ -537,8 +537,9 @@ class Assignment(kvs.Base, assignment.Driver):
                                 inherited_to_projects)
 
     def list_grants(self, user_id=None, group_id=None,
-                    domain_id=None, project_id=None,
+                    domain_id=None, projects_ids=None,
                     inherited_to_projects=False):
+        project_id=projects_ids[0] if projects_ids else None
         if domain_id:
             self.get_domain(domain_id)
         if project_id:
@@ -555,8 +556,9 @@ class Assignment(kvs.Base, assignment.Driver):
                                             inherited_to_projects)]
 
     def get_grant(self, role_id, user_id=None, group_id=None,
-                  domain_id=None, project_id=None,
+                  domain_id=None, projects_ids=None,
                   inherited_to_projects=False):
+        project_id=projects_ids[0] if project_ids else None
         self.get_role(role_id)
         if group_id:
             self.get_group(group_id)
