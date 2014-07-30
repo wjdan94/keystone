@@ -260,19 +260,23 @@ class Assignment(keystone_assignment.Driver):
             if projects_ids:
                 self._get_project(session, projects_ids[0])
 
+            targets_ids = projects_ids + [domain_id] \
+                if projects_ids else [domain_id]
+
             q = self._build_grant_filter(
                 session=session, role_id=None,
                 actor_id=user_id or group_id, domain_id=domain_id,
                 projects_ids=projects_ids,
                 inherited_to_projects=inherited_to_projects)
 
-            grants = [x.to_dict() for x in q.all()]
+            grants_refs = [x.to_dict() for x in q.all()]
 
-            roles_ids = [x['role_id'] for x in grants]
+            roles_ids = [x['role_id'] for x in grants_refs]
             q = session.query(Role)
             q = q.filter(Role.id.in_(roles_ids))
 
-            return list(set([x.to_dict() for x in q.all()]))
+            grants = set([x for x in q.all()])
+            return [x.to_dict() for x in grants]
 
     def _build_grant_filter(self, session, role_id, actor_id,
                             domain_id=None, projects_ids=None,
@@ -280,8 +284,9 @@ class Assignment(keystone_assignment.Driver):
         q = session.query(RoleAssignment)
         q = q.filter_by(actor_id=actor_id)
 
-        targets_ids = projects_ids + [domain_id] \
-            if projects_ids else [domain_id]
+        targets_ids = projects_ids if projects_ids else []
+        targets_ids = targets_ids + [domain_id] if domain_id else targets_ids
+
         q = q.filter(RoleAssignment.target_id.in_(targets_ids))
 
         q = q.filter_by(role_id=role_id) if role_id else q
@@ -321,9 +326,12 @@ class Assignment(keystone_assignment.Driver):
             if project_id:
                 self._get_project(session, project_id)
 
+            project_id = [project_id] if project_id else None
             q = self._build_grant_filter(
-                session, role_id, user_id, group_id, domain_id, project_id,
-                inherited_to_projects)
+                session=session, role_id=role_id,
+                actor_id=user_id or group_id, domain_id=domain_id,
+                projects_ids=project_id,
+                inherited_to_projects=inherited_to_projects)
             if not q.delete(False):
                 raise exception.RoleNotFound(role_id=role_id)
 
