@@ -18,7 +18,6 @@
 import copy
 import uuid
 
-import six
 from six.moves import urllib
 
 from keystone.common import controller
@@ -529,9 +528,9 @@ class RoleV3(controller.V3Controller):
                     group_id=None, domain_id=None, project_id=None):
         """Lists roles granted to user/group on either a domain or project."""
 
-        def is_inheritable(context):
+        def only_inheritable(context):
             return 'inheritable' in context['query_string'] and \
-                self._query_filter_is_true(context['query_string']
+                self.query_filter_is_true(context['query_string']
                                            ['inheritable'])
 
         self._require_domain_xor_project(domain_id, project_id)
@@ -540,13 +539,15 @@ class RoleV3(controller.V3Controller):
         if self._check_if_inherited(context):
             refs = self.assignment_api.list_inheritable_grants(
                 user_id, group_id, domain_id, project_id)
-            if not is_inheritable(context):
+            if not only_inheritable(context):
                 direct_grants = self.assignment_api.list_direct_grants(
                     user_id=user_id, group_id=group_id, domain_id=domain_id, project_id=project_id)
                 refs += direct_grants
         else:
             refs = self.assignment_api.list_direct_grants(
                 user_id, group_id, domain_id, project_id)
+
+        refs = {v['id']:v for v in refs}.values()
 
         return RoleV3.wrap_collection(context, refs)
 
@@ -844,26 +845,6 @@ class RoleAssignmentV3(controller.V3Controller):
 
         return new_refs
 
-    def _query_filter_is_true(self, filter_value):
-        """Determine if bool query param is 'True'.
-
-        We treat this the same way as we do for policy
-        enforcement:
-
-        {bool_param}=0 is treated as False
-
-        Any other value is considered to be equivalent to
-        True, including the absence of a value
-
-        """
-
-        if (isinstance(filter_value, six.string_types) and
-                filter_value == '0'):
-            val = False
-        else:
-            val = True
-        return val
-
     def _filter_inherited(self, entry):
         if ('inherited_to_projects' in entry and
                 not CONF.os_inherit.enabled):
@@ -889,7 +870,7 @@ class RoleAssignmentV3(controller.V3Controller):
              if self._filter_inherited(x)])
 
         if ('effective' in context['query_string'] and
-                self._query_filter_is_true(
+                self.query_filter_is_true(
                     context['query_string']['effective'])):
 
             formatted_refs = self._expand_indirect_assignments(context,

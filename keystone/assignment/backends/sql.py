@@ -271,12 +271,11 @@ class Assignment(keystone_assignment.Driver):
 
             grants_refs = [x.to_dict() for x in q.all()]
 
-            roles_ids = [x['role_id'] for x in grants_refs]
+            roles_ids = list(set([x['role_id'] for x in grants_refs]))
             q = session.query(Role)
             q = q.filter(Role.id.in_(roles_ids))
 
-            grants = set([x for x in q.all()])
-            return [x.to_dict() for x in grants]
+            return [x.to_dict() for x in q.all()]
 
     def _build_grant_filter(self, session, role_id, actor_id,
                             domain_id=None, projects_ids=None,
@@ -362,6 +361,18 @@ class Assignment(keystone_assignment.Driver):
                 project_refs = query.all()
                 return [project_ref.to_dict() for project_ref in project_refs]
 
+        def _get_project_children_ids(project_id):
+            children_ids = set()
+            for child in self.list_project_children(project_id):
+                children_ids.add(child['id'])
+            return children_ids
+
+        def _get_domains_project_ids(domain_ids):
+            query = session.query(Project.id)
+            query = query.filter(Project.domain_id.in_(domain_ids))
+
+            return set([x.id for x in query.all()])
+
         with sql.transaction() as session:
             # First get a list of the projects and domains for which the user
             # has any kind of role assigned
@@ -374,42 +385,41 @@ class Assignment(keystone_assignment.Driver):
             query = query.filter(RoleAssignment.actor_id.in_(actor_list))
             assignments = query.all()
 
-            project_ids = set()
+            project_assignments = set()
             for assignment in assignments:
                 if (assignment.type == AssignmentType.USER_PROJECT or
                         assignment.type == AssignmentType.GROUP_PROJECT):
-                    project_ids.add(assignment.target_id)
+                    project_assignments.add(assignment)
+
+            project_ids = set([x.target_id for x in project_assignments])
 
             if not CONF.os_inherit.enabled:
                 return _project_ids_to_dicts(session, project_ids)
 
             # Inherited roles are enabled, so check to see if this user has any
             # such roles (direct or group) on any domain, in which case we must
-            # add in all the projects in that domain.
+            # add in all the projects in that domain. Furthermore, check if
+            # he has such roles as inherited on a project; in this case, add
+            # its children projects.
+
+            children_ids = set()
+            for assignment in project_assignments:
+                if assignment.inherited:
+                    children_ids = children_ids.union(
+                        _get_project_children_ids(assignment.target_id))
+
+            project_ids = children_ids.union(project_ids)
 
             domain_ids = set()
-            parent_project_ids = set()
             for assignment in assignments:
                 if ((assignment.type == AssignmentType.USER_DOMAIN or
                     assignment.type == AssignmentType.GROUP_DOMAIN) and
                         assignment.inherited):
                     domain_ids.add(assignment.target_id)
-                elif assignment.inherited:
-                    parent_project_ids.add(assignment.target_id)
-
-            # Get the projects that are owned by all of these domains and
-            # add them in to the project id list
 
             if domain_ids:
-                query = session.query(Project.id)
-                query = query.filter(Project.domain_id.in_(domain_ids))
-                for project_ref in query.all():
-                    project_ids.add(project_ref.id)
-            if parent_project_ids:
-                for parent_id in parent_project_ids:
-                    for child_ref in self._get_children_projects(session,
-                                                                 parent_id):
-                        project_ids.add(child_ref.id)
+                project_ids = project_ids.union(
+                    _get_domains_project_ids(domain_ids))
 
             return _project_ids_to_dicts(session, project_ids)
 

@@ -155,7 +155,7 @@ class BaseLDAPIdentity(test_backend.IdentityTests):
                                          role_id='member')
         roles_ref = self.assignment_api.list_grants(
             user_id=self.user_foo['id'],
-            project_id=self.tenant_baz['id'])
+            projects_ids=[self.tenant_baz['id']])
         self.assertDictEqual(roles_ref[0], self.role_member)
 
         self.assignment_api.delete_grant(user_id=self.user_foo['id'],
@@ -163,7 +163,7 @@ class BaseLDAPIdentity(test_backend.IdentityTests):
                                          role_id='member')
         roles_ref = self.assignment_api.list_grants(
             user_id=self.user_foo['id'],
-            project_id=self.tenant_baz['id'])
+            projects_ids=[self.tenant_baz['id']])
         self.assertEqual(0, len(roles_ref))
         self.assertRaises(exception.NotFound,
                           self.assignment_api.delete_grant,
@@ -184,7 +184,7 @@ class BaseLDAPIdentity(test_backend.IdentityTests):
 
         roles_ref = self.assignment_api.list_grants(
             group_id=new_group['id'],
-            project_id=self.tenant_bar['id'])
+            projects_ids=[self.tenant_bar['id']])
         self.assertEqual([], roles_ref)
         self.assertEqual(0, len(roles_ref))
 
@@ -193,7 +193,7 @@ class BaseLDAPIdentity(test_backend.IdentityTests):
                                          role_id='member')
         roles_ref = self.assignment_api.list_grants(
             group_id=new_group['id'],
-            project_id=self.tenant_bar['id'])
+            projects_ids=[self.tenant_bar['id']])
         self.assertNotEmpty(roles_ref)
         self.assertDictEqual(roles_ref[0], self.role_member)
 
@@ -202,7 +202,7 @@ class BaseLDAPIdentity(test_backend.IdentityTests):
                                          role_id='member')
         roles_ref = self.assignment_api.list_grants(
             group_id=new_group['id'],
-            project_id=self.tenant_bar['id'])
+            projects_ids=[self.tenant_bar['id']])
         self.assertEqual(0, len(roles_ref))
         self.assertRaises(exception.NotFound,
                           self.assignment_api.delete_grant,
@@ -767,7 +767,7 @@ class BaseLDAPIdentity(test_backend.IdentityTests):
 
         role_ref = self.assignment_api.get_grant(role_id,
                                                  user_id=public_user_id,
-                                                 project_id=project_id)
+                                                 projects_ids=[project_id])
 
         self.assertEqual(role_id, role_ref['id'])
 
