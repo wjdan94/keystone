@@ -1250,13 +1250,13 @@ class IdentityTests(object):
         self.assertEqual(2, len(roles_ref))
         self.assertIn(role_list[2], roles_ref)
         self.assertIn(role_list[3], roles_ref)
-        roles_ref = self.assignment_api.list_grants(user_id=user1['id'],
-                                                    projects_ids=[project1['id']])
+        roles_ref = self.assignment_api.list_grants(
+            user_id=user1['id'], projects_ids=[project1['id']])
         self.assertEqual(2, len(roles_ref))
         self.assertIn(role_list[4], roles_ref)
         self.assertIn(role_list[5], roles_ref)
-        roles_ref = self.assignment_api.list_grants(group_id=group1['id'],
-                                                    projects_ids=[project1['id']])
+        roles_ref = self.assignment_api.list_grants(
+            group_id=group1['id'], projects_ids=[project1['id']])
         self.assertEqual(2, len(roles_ref))
         self.assertIn(role_list[6], roles_ref)
         self.assertIn(role_list[7], roles_ref)
@@ -4795,22 +4795,22 @@ class InheritanceTests(object):
 
         domain0 = self._create_random_domain()
         project0 = self._create_random_project(domain_id=domain0['id'])
-        subproject0 = self._create_random_project(
-        domain_id=domain0['id'], parent_project_id=project0['id'])
+        self._create_random_project(
+            domain_id=domain0['id'], parent_project_id=project0['id'])
 
         domain1 = self._create_random_domain()
         project1a = self._create_random_project(domain_id=domain1['id'])
         subproject1a = self._create_random_project(
-        domain_id=domain1['id'], parent_project_id=project1a['id'])
+            domain_id=domain1['id'], parent_project_id=project1a['id'])
         project1b = self._create_random_project(domain_id=domain1['id'])
 
         domain2 = self._create_random_domain()
         project2a = self._create_random_project(domain_id=domain2['id'])
         subproject2a = self._create_random_project(
-        domain_id=domain2['id'], parent_project_id=project2a['id'])
+            domain_id=domain2['id'], parent_project_id=project2a['id'])
         subproject2ab = self._create_random_project(
-        domain_id=domain2['id'], parent_project_id=project2a['id'])
-        project2b = self._create_random_project(domain_id=domain2['id'])
+            domain_id=domain2['id'], parent_project_id=project2a['id'])
+        self._create_random_project(domain_id=domain2['id'])
 
         user1 = self._create_random_user(domain_id=domain0['id'])
         group1 = self._create_random_group(domain_id=domain0['id'])

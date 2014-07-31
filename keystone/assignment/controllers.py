@@ -541,13 +541,14 @@ class RoleV3(controller.V3Controller):
                 user_id, group_id, domain_id, project_id)
             if not only_inheritable(context):
                 direct_grants = self.assignment_api.list_direct_grants(
-                    user_id=user_id, group_id=group_id, domain_id=domain_id, project_id=project_id)
+                    user_id=user_id, group_id=group_id,
+                    domain_id=domain_id, project_id=project_id)
                 refs += direct_grants
         else:
             refs = self.assignment_api.list_direct_grants(
                 user_id, group_id, domain_id, project_id)
 
-        refs = {v['id']:v for v in refs}.values()
+        refs = {v['id']: v for v in refs}.values()
 
         return RoleV3.wrap_collection(context, refs)
 
@@ -560,10 +561,12 @@ class RoleV3(controller.V3Controller):
 
         if self._check_if_inherited(context):
             self.assignment_api.get_inheritable_grant(
-                role_id=role_id, user_id=user_id, group_id=group_id, domain_id=domain_id, project_id=project_id)
+                role_id=role_id, user_id=user_id, group_id=group_id,
+                domain_id=domain_id, project_id=project_id)
         else:
             self.assignment_api.get_direct_grant(
-                role_id=role_id, user_id=user_id, group_id=group_id, domain_id=domain_id, project_id=project_id)
+                role_id=role_id, user_id=user_id, group_id=group_id,
+                domain_id=domain_id, project_id=project_id)
 
     @controller.protected(callback=_check_grant_protection)
     def revoke_grant(self, context, role_id, user_id=None,

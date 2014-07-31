@@ -102,28 +102,6 @@ class Assignment(keystone_assignment.Driver):
             assignments = query.all()
             return [assignment.actor_id for assignment in assignments]
 
-    def _calculate_assignment_type(self, user_id, group_id,
-                                   project_id, domain_id):
-        assignmenType = AssignmentType()
-
-        if user_id is not None:
-            assignmentType.setActorType(AssignmentType.USER)
-        elif group_id is not None:
-            assignmentType.setActorType(AssignmentType.GROUP)
-        if project_id is not None:
-            assignmentType.setTargetType(AssignmentType.PROJECT)
-        elif domain_id is not None:
-            assignmentType.setTargetType(AssignmentType.DOMAIN)
-
-        if not assignmenType.isValid():
-            message_data = ', '.join(
-                [user_id, group_id, project_id, domain_id])
-            raise exception.Error(message=_(
-                'Unexpected combination of grant attributes - '
-                'User, Group, Project, Domain: %s') % message_data)
-
-        return assignmenType
-
     def _get_metadata(self, user_id=None, tenant_id=None,
                       domain_id=None, group_id=None, session=None):
         # TODO(henry-nash): This method represents the last vestiges of the old
@@ -219,8 +197,8 @@ class Assignment(keystone_assignment.Driver):
             if projects_ids:
                 self._get_project(session, projects_ids[0])
 
-            targets_ids = projects_ids + [domain_id] \
-                if projects_ids else [domain_id]
+            # targets_ids = projects_ids + [domain_id] \
+            #    if projects_ids else [domain_id]
 
             q = self._build_grant_filter(
                 session=session, role_id=None,

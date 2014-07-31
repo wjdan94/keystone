@@ -361,7 +361,7 @@ class Manager(manager.Manager):
                              self.list_project_parents(project_id)]
             domain_id = self.get_project(project_id)['domain_id']
 
-        self.driver.get_grant(role_id=role_id,user_id=user_id,
+        self.driver.get_grant(role_id=role_id, user_id=user_id,
                               group_id=group_id,
                               domain_id=domain_id,
                               projects_ids=projects_ids,
