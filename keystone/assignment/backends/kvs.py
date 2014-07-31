@@ -185,6 +185,12 @@ get_grant
         return [self.get_role(x) for x in role_ids]
 
     def list_projects_for_user(self, user_id, group_ids, hints):
+        def _get_project_children_ids(project_id):
+            children_ids = set()
+            for child in self.list_project_children(project_id):
+                children_ids.add(child['id'])
+            return children_ids
+
         project_ids = set()
         all_projects = self.list_projects(hints=None)
 
@@ -224,8 +230,17 @@ get_grant
                         break
                 continue
 
+            children = set()
+            data = self.db.get(key)
+            for role in data.get('roles', []):
+                if CONF.os_inherit.enabled and \
+                   role.get('inherited_to', "") == 'projects':
+                    children = children.union(_get_project_children_ids(
+                        meta_project_or_domain_id))
+
             project_id = meta_project_or_domain_id
             project_ids.add(project_id)
+            project_ids = project_ids.union(children)
 
         project_refs = []
 
@@ -558,6 +573,7 @@ get_grant
                   domain_id=None, project_id=None,
                   parents_ids=None, inherited_to_projects=False):
         self.get_role(role_id)
+
         if group_id:
             self.get_group(group_id)
         if domain_id:

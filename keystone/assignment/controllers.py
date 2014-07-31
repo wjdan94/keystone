@@ -548,7 +548,7 @@ class RoleV3(controller.V3Controller):
             refs = self.assignment_api.list_direct_grants(
                 user_id, group_id, domain_id, project_id)
 
-        refs = {v['id']:v for v in refs}.values()
+        refs = {v['id']: v for v in refs}.values()
 
         return RoleV3.wrap_collection(context, refs)
 

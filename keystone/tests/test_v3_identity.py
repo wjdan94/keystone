@@ -2261,16 +2261,26 @@ class IdentityInheritanceTestCase(test_v3.RestfulTestCase):
         self.assertRoleAssignmentInListResponse(r, gd_entity, link_url=gd_url)
 
     def _build_collection_url(self, user_id=None, group_id=None,
-                              domain_id=None, project_id=None, inheritable=False):
-        target_type, target_id = ('domains', domain_id) if domain_id else ('projects', project_id)
-        actor_type, actor_id = ('users', user_id) if user_id else ('groups',group_id)
+                              domain_id=None, project_id=None,
+                              inheritable=False):
+        if domain_id:
+            target_type, target_id = ('domains', domain_id)
+        else:
+            target_type, target_id = ('projects', project_id)
+        if user_id:
+            actor_type, actor_id = ('users', user_id)
+        else:
+            actor_type, actor_id = ('groups', group_id)
 
-        return ('/OS-INHERIT/%(target_type)s/%(target_id)s/%(actor_type)s/%(actor_id)s/roles/inherited_to_projects%(inheritable)s' % {
-                    'target_type': target_type,
-                    'target_id': target_id,
-                    'actor_type': actor_type,
-                    'actor_id': actor_id,
-                    'inheritable': '?inheritable' if inheritable else ''})
+        url = ('/OS-INHERIT/%(target_type)s/%(target_id)s' % {
+            'target_type': target_type,
+            'target_id': target_id})
+        url += ('/%(actor_type)s/%(actor_id)s/roles' % {
+            'actor_type': actor_type,
+            'actor_id': actor_id})
+        url += ('/inherited_to_projects%(inheritable)s' % {
+            'inheritable': '?inheritable' if inheritable else ''})
+        return url
 
     def test_list_only_inherited_roles_for_user(self):
         """Test inherited group roles.
@@ -2313,9 +2323,9 @@ class IdentityInheritanceTestCase(test_v3.RestfulTestCase):
         project3a = self._create_random_project(domain_id=domain3['id'])
         project3b = self._create_random_project(domain_id=domain3['id'])
         subproject3a1 = self._create_random_project(
-            domain_id=domain3['id'],  parent_project_id=project3a['id'])
+            domain_id=domain3['id'], parent_project_id=project3a['id'])
         subproject3a2 = self._create_random_project(
-            domain_id=domain3['id'],  parent_project_id=project3a['id'])
+            domain_id=domain3['id'], parent_project_id=project3a['id'])
 
         user1 = self._create_random_user(domain_id=domain0['id'])
         role_list = self._create_random_roles(8)
