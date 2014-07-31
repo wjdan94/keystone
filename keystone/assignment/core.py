@@ -345,50 +345,44 @@ class Manager(manager.Manager):
 
     def get_direct_grant(self, role_id, user_id=None, group_id=None,
                          domain_id=None, project_id=None):
-        if project_id:
-            project_id = [project_id]
-        self.driver.get_grant(role_id=role_id, user_id=user_id,
-                              group_id=group_id, domain_id=domain_id,
-                              projects_ids=project_id,
+        self.driver.get_grant(role_id=role_id,
+                              user_id=user_id, group_id=group_id,
+                              domain_id=domain_id, project_id=project_id,
                               inherited_to_projects=None)
 
     def get_inheritable_grant(self, role_id, user_id=None, group_id=None,
                               domain_id=None, project_id=None):
-        projects_ids = None
+        parents_ids = []
         if project_id:
-            projects_ids = [project_id]
-            projects_ids += [x['id'] for x in
-                             self.list_project_parents(project_id)]
             domain_id = self.get_project(project_id)['domain_id']
+            parents_ids += [x['id'] for x in
+                            self.list_project_parents(project_id)]
 
-        self.driver.get_grant(role_id=role_id,user_id=user_id,
-                              group_id=group_id,
-                              domain_id=domain_id,
-                              projects_ids=projects_ids,
+        self.driver.get_grant(role_id=role_id,
+                              user_id=user_id, group_id=group_id,
+                              domain_id=domain_id, project_id=project_id,
+                              parents_ids=parents_ids,
                               inherited_to_projects=True)
+
+    def list_direct_grants(self, user_id, group_id, domain_id, project_id):
+        return self.driver.list_grants(user_id=user_id, group_id=group_id,
+                                       domain_id=domain_id,
+                                       project_id=project_id,
+                                       inherited_to_projects=None)
 
     def list_inheritable_grants(self, user_id, group_id,
                                 domain_id, project_id):
-        projects_ids = None
+        parents_ids = []
         if project_id:
-            projects_ids = [project_id]
-            projects_ids += [x['id'] for x in
-                             self.list_project_parents(project_id)]
             domain_id = self.get_project(project_id)['domain_id']
+            parents_ids += [x['id'] for x in
+                            self.list_project_parents(project_id)]
 
-        return self.driver.list_grants(user_id=user_id,
-                                       group_id=group_id,
-                                       domain_id=domain_id,
-                                       projects_ids=projects_ids,
-                                       inherited_to_projects=True)
-
-    def list_direct_grants(self, user_id, group_id, domain_id, project_id):
-        if project_id:
-            project_id = [project_id]
         return self.driver.list_grants(user_id=user_id, group_id=group_id,
                                        domain_id=domain_id,
-                                       projects_ids=project_id,
-                                       inherited_to_projects=None)
+                                       project_id=project_id,
+                                       parents_ids=parents_ids,
+                                       inherited_to_projects=True)
 
     def add_user_to_project(self, tenant_id, user_id):
         """Add user to a tenant by creating a default role relationship.
@@ -867,8 +861,8 @@ class Driver(object):
 
     @abc.abstractmethod
     def list_grants(self, user_id=None, group_id=None,
-                    domain_id=None, projects_ids=None,
-                    inherited_to_projects=False):
+                    domain_id=None, project_id=None,
+                    parents_ids=None, inherited_to_projects=False):
         """Lists assignments/grants.
 
         :raises: keystone.exception.UserNotFound,
@@ -882,8 +876,8 @@ class Driver(object):
 
     @abc.abstractmethod
     def get_grant(self, role_id, user_id=None, group_id=None,
-                  domain_id=None, projects_ids=None,
-                  inherited_to_projects=False):
+                  domain_id=None, project_id=None,
+                  parents_ids=None, inherited_to_projects=False):
         """Lists assignments/grants.
 
         :raises: keystone.exception.UserNotFound,

@@ -760,14 +760,14 @@ class IdentityTests(object):
     def test_get_role_grant_by_user_and_project(self):
         roles_ref = self.assignment_api.list_grants(
             user_id=self.user_foo['id'],
-            projects_ids=[self.tenant_bar['id']])
+            project_id=self.tenant_bar['id'])
         self.assertEqual(1, len(roles_ref))
         self.assignment_api.create_grant(user_id=self.user_foo['id'],
                                          project_id=self.tenant_bar['id'],
                                          role_id=self.role_admin['id'])
         roles_ref = self.assignment_api.list_grants(
             user_id=self.user_foo['id'],
-            projects_ids=[self.tenant_bar['id']])
+            project_id=self.tenant_bar['id'])
         self.assertIn(self.role_admin['id'],
                       [role_ref['id'] for role_ref in roles_ref])
 
@@ -776,7 +776,7 @@ class IdentityTests(object):
                                          role_id='member')
         roles_ref = self.assignment_api.list_grants(
             user_id=self.user_foo['id'],
-            projects_ids=[self.tenant_bar['id']])
+            project_id=self.tenant_bar['id'])
 
         roles_ref_ids = []
         for ref in roles_ref:
@@ -790,7 +790,7 @@ class IdentityTests(object):
                                          role_id='member')
         roles_ref = self.assignment_api.list_grants(
             user_id=self.user_foo['id'],
-            projects_ids=[self.tenant_baz['id']])
+            project_id=self.tenant_baz['id'])
         self.assertDictEqual(roles_ref[0], self.role_member)
 
         self.assignment_api.delete_grant(user_id=self.user_foo['id'],
@@ -798,7 +798,7 @@ class IdentityTests(object):
                                          role_id='member')
         roles_ref = self.assignment_api.list_grants(
             user_id=self.user_foo['id'],
-            projects_ids=[self.tenant_baz['id']])
+            project_id=self.tenant_baz['id'])
         self.assertEqual(0, len(roles_ref))
         self.assertRaises(exception.NotFound,
                           self.assignment_api.delete_grant,
@@ -818,14 +818,14 @@ class IdentityTests(object):
                                             new_group['id'])
         roles_ref = self.assignment_api.list_grants(
             group_id=new_group['id'],
-            projects_ids=[self.tenant_bar['id']])
+            project_id=self.tenant_bar['id'])
         self.assertEqual(0, len(roles_ref))
         self.assignment_api.create_grant(group_id=new_group['id'],
                                          project_id=self.tenant_bar['id'],
                                          role_id='member')
         roles_ref = self.assignment_api.list_grants(
             group_id=new_group['id'],
-            projects_ids=[self.tenant_bar['id']])
+            project_id=self.tenant_bar['id'])
         self.assertDictEqual(roles_ref[0], self.role_member)
 
         self.assignment_api.delete_grant(group_id=new_group['id'],
@@ -833,7 +833,7 @@ class IdentityTests(object):
                                          role_id='member')
         roles_ref = self.assignment_api.list_grants(
             group_id=new_group['id'],
-            projects_ids=[self.tenant_bar['id']])
+            project_id=self.tenant_bar['id'])
         self.assertEqual(0, len(roles_ref))
         self.assertRaises(exception.NotFound,
                           self.assignment_api.delete_grant,
@@ -1087,7 +1087,7 @@ class IdentityTests(object):
         self.assignment_api.create_project(project1['id'], project1)
         roles_ref = self.assignment_api.list_grants(
             group_id=group1['id'],
-            projects_ids=[project1['id']])
+            project_id=project1['id'])
         self.assertEqual(0, len(roles_ref))
         self.assignment_api.create_grant(group_id=group1['id'],
                                          project_id=project1['id'],
@@ -1097,7 +1097,7 @@ class IdentityTests(object):
                                          role_id=role2['id'])
         roles_ref = self.assignment_api.list_grants(
             group_id=group1['id'],
-            projects_ids=[project1['id']])
+            project_id=project1['id'])
 
         roles_ref_ids = []
         for ref in roles_ref:
@@ -1110,7 +1110,7 @@ class IdentityTests(object):
                                          role_id=role1['id'])
         roles_ref = self.assignment_api.list_grants(
             group_id=group1['id'],
-            projects_ids=[project1['id']])
+            project_id=project1['id'])
         self.assertEqual(1, len(roles_ref))
         self.assertDictEqual(roles_ref[0], role2)
 
@@ -1131,7 +1131,7 @@ class IdentityTests(object):
         self.assignment_api.create_project(project1['id'], project1)
         roles_ref = self.assignment_api.list_grants(
             user_id=user1['id'],
-            projects_ids=[project1['id']])
+            project_id=project1['id'])
         self.assertEqual(0, len(roles_ref))
         self.assignment_api.create_grant(user_id=user1['id'],
                                          project_id=project1['id'],
@@ -1141,7 +1141,7 @@ class IdentityTests(object):
                                          role_id=role2['id'])
         roles_ref = self.assignment_api.list_grants(
             user_id=user1['id'],
-            projects_ids=[project1['id']])
+            project_id=project1['id'])
 
         roles_ref_ids = []
         for ref in roles_ref:
@@ -1154,7 +1154,7 @@ class IdentityTests(object):
                                          role_id=role1['id'])
         roles_ref = self.assignment_api.list_grants(
             user_id=user1['id'],
-            projects_ids=[project1['id']])
+            project_id=project1['id'])
         self.assertEqual(1, len(roles_ref))
         self.assertDictEqual(roles_ref[0], role2)
 
@@ -1214,7 +1214,7 @@ class IdentityTests(object):
 
         roles_ref = self.assignment_api.list_grants(
             user_id=user1['id'],
-            projects_ids=[project1['id']])
+            project_id=project1['id'])
         self.assertEqual(0, len(roles_ref))
         self.assignment_api.create_grant(user_id=user1['id'],
                                          domain_id=domain1['id'],
@@ -1251,12 +1251,12 @@ class IdentityTests(object):
         self.assertIn(role_list[2], roles_ref)
         self.assertIn(role_list[3], roles_ref)
         roles_ref = self.assignment_api.list_grants(user_id=user1['id'],
-                                                    projects_ids=[project1['id']])
+                                                    project_id=project1['id'])
         self.assertEqual(2, len(roles_ref))
         self.assertIn(role_list[4], roles_ref)
         self.assertIn(role_list[5], roles_ref)
         roles_ref = self.assignment_api.list_grants(group_id=group1['id'],
-                                                    projects_ids=[project1['id']])
+                                                    project_id=project1['id'])
         self.assertEqual(2, len(roles_ref))
         self.assertIn(role_list[6], roles_ref)
         self.assertIn(role_list[7], roles_ref)
@@ -1323,7 +1323,7 @@ class IdentityTests(object):
 
         roles_ref = self.assignment_api.list_grants(
             user_id=user1['id'],
-            projects_ids=[project1['id']])
+            project_id=project1['id'])
         self.assertEqual(0, len(roles_ref))
         self.assignment_api.create_grant(user_id=user1['id'],
                                          domain_id=domain1['id'],
@@ -1388,11 +1388,11 @@ class IdentityTests(object):
                                          role_id=role1['id'])
         roles_ref = self.assignment_api.list_grants(
             user_id=user1['id'],
-            projects_ids=[project1['id']])
+            project_id=project1['id'])
         self.assertEqual(1, len(roles_ref))
         roles_ref = self.assignment_api.list_grants(
             group_id=group1['id'],
-            projects_ids=[project1['id']])
+            project_id=project1['id'])
         self.assertEqual(1, len(roles_ref))
         roles_ref = self.assignment_api.list_grants(
             user_id=user1['id'],
@@ -1405,11 +1405,11 @@ class IdentityTests(object):
         self.assignment_api.delete_role(role1['id'])
         roles_ref = self.assignment_api.list_grants(
             user_id=user1['id'],
-            projects_ids=[project1['id']])
+            project_id=project1['id'])
         self.assertEqual(0, len(roles_ref))
         roles_ref = self.assignment_api.list_grants(
             group_id=group1['id'],
-            projects_ids=[project1['id']])
+            project_id=project1['id'])
         self.assertEqual(0, len(roles_ref))
         roles_ref = self.assignment_api.list_grants(
             user_id=user1['id'],
@@ -1444,7 +1444,7 @@ class IdentityTests(object):
                                             group_id=group1['id'])
         roles_ref = self.assignment_api.list_grants(
             user_id=user1['id'],
-            projects_ids=[project1['id']])
+            project_id=project1['id'])
         self.assertEqual(1, len(roles_ref))
         roles_ref = self.assignment_api.list_grants(
             user_id=user1['id'],
@@ -1484,7 +1484,7 @@ class IdentityTests(object):
                                             group_id=group1['id'])
         roles_ref = self.assignment_api.list_grants(
             group_id=group1['id'],
-            projects_ids=[project1['id']])
+            project_id=project1['id'])
         self.assertEqual(1, len(roles_ref))
         roles_ref = self.assignment_api.list_grants(
             group_id=group1['id'],
@@ -4437,12 +4437,12 @@ class InheritanceTests(object):
         # Check that there are no roles yet
         roles_ref = self.assignment_api.list_grants(
             user_id=user1['id'],
-            projects_ids=[project1['id']])
+            project_id=project1['id'])
         self.assertEqual(0, len(roles_ref))
 
         roles_ref = self.assignment_api.list_grants(
             user_id=user1['id'],
-            projects_ids=[subproject1['id']])
+            project_id=subproject1['id'])
         self.assertEqual(0, len(roles_ref))
 
         # Create the first three roles - none is inherited
@@ -4586,12 +4586,12 @@ class InheritanceTests(object):
         # Check that there are no roles yet
         roles_ref = self.assignment_api.list_grants(
             user_id=user1['id'],
-            projects_ids=[project1['id']])
+            project_id=project1['id'])
         self.assertEqual(0, len(roles_ref))
 
         roles_ref = self.assignment_api.list_grants(
             user_id=user1['id'],
-            projects_ids=[subproject1['id']])
+            project_id=subproject1['id'])
         self.assertEqual(0, len(roles_ref))
 
         # Create three direct roles

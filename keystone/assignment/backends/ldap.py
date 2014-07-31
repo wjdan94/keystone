@@ -346,9 +346,8 @@ class Assignment(assignment.Driver):
                 user_id, project_id, role_id)
 
     def get_grant(self, role_id, user_id=None, group_id=None,
-                  domain_id=None, projects_ids=None,
-                  inherited_to_projects=False):
-        project_id = projects_ids[0] if projects_ids else None
+                  domain_id=None, project_id=None,
+                  parents_ids=None, inherited_to_projects=False):
         role_ref = self.get_role(role_id)
 
         if domain_id:
@@ -395,9 +394,8 @@ class Assignment(assignment.Driver):
             raise exception.RoleNotFound(role_id=role_id)
 
     def list_grants(self, user_id=None, group_id=None,
-                    domain_id=None, projects_ids=None,
-                    inherited_to_projects=False):
-        project_id = projects_ids[0] if projects_ids else None
+                    domain_id=None, project_id=None,
+                    parents_ids=None, inherited_to_projects=False):
         if domain_id:
             self.get_domain(domain_id)
         if project_id:
