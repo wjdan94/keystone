@@ -26,52 +26,11 @@ from keystone.i18n import _
 CONF = config.CONF
 
 
-# class AssignmentType:
-#     USER_PROJECT = 'UserProject'
-#     GROUP_PROJECT = 'GroupProject'
-#     USER_DOMAIN = 'UserDomain'
-#     GROUP_DOMAIN = 'GroupDomain'
-
 class AssignmentType:
-    USER = "User"
-    GROUP = "Group"
-    PROJECT = "Project"
-    DOMAIN = "Domain"
-    
     USER_PROJECT = 'UserProject'
     GROUP_PROJECT = 'GroupProject'
     USER_DOMAIN = 'UserDomain'
     GROUP_DOMAIN = 'GroupDomain'
-    
-    def __init__(self, actorType=None, targetType=None):
-        self._actorType = None
-        self._targetType = None
-        self.setActorType(actorType)
-        self.setTargetType(targetType)
-    
-    def setActorType(self, actorType):
-        if self._isActorTypeValid(actorType):
-            self._actorType = actorType
-    
-    def setTargetType(self, targetType):
-        if self._isTargetTypeValid(targetType):
-            self._targetType = targetType
-
-    def getActorType(self):
-        return self._actorType
-
-    def getTargetType(self):
-        return self._targetType
-
-    def isValid(self):
-        return self.getActorType() is not None and \
-            self.getTargetType() is not None
-    
-    def _isActorTypeValid(self, actorType):
-        return self.USER == actorType or self.GROUP == actorType
-    
-    def _isTargetTypeValid(self, targetType):
-        return self.PROJECT == targetType or self.DOMAIN == targetType
 
 
 class Assignment(keystone_assignment.Driver):
