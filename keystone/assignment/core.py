@@ -364,14 +364,15 @@ class Manager(manager.Manager):
                               parents_ids=parents_ids,
                               inherited_to_projects=True)
 
-    def list_direct_grants(self, user_id, group_id, domain_id, project_id):
+    def list_direct_grants(self, user_id=None, group_id=None, domain_id=None,
+                           project_id=None):
         return self.driver.list_grants(user_id=user_id, group_id=group_id,
                                        domain_id=domain_id,
                                        project_id=project_id,
                                        inherited_to_projects=None)
 
-    def list_inheritable_grants(self, user_id, group_id,
-                                domain_id, project_id):
+    def list_inheritable_grants(self, user_id=None, group_id=None,
+                                domain_id=None, project_id=None):
         parents_ids = []
         if project_id:
             domain_id = self.get_project(project_id)['domain_id']
