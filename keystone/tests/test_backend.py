@@ -4623,7 +4623,6 @@ class InheritanceTests(object):
         self.assertEqual(0, len(inheritable_roles_ref))
         self.assertEqual(0, len(roles_ref))
 
-
         inheritable_roles_ref = self.assignment_api.list_grants(
             user_id=user1['id'],
             domain_id=domain1['id'],

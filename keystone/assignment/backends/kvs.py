@@ -548,7 +548,8 @@ get_grant
     def list_grants(self, user_id=None, group_id=None,
                     domain_id=None, project_id=None,
                     parents_ids=None, inherited_to_projects=False):
-        def _get_metadata_from_projects(user_id=None, group_id=None, projects_ids=None):
+        def _get_metadata_from_projects(user_id=None, group_id=None,
+                                        projects_ids=None):
             metadata_ref = []
             projects_ids = projects_ids or []
 
@@ -557,11 +558,11 @@ get_grant
                     metadata_ref += self._get_metadata(
                         user_id=user_id, group_id=group_id,
                         tenant_id=project_id).get('roles', [])
-                except:
+                except exception.MetadataNotFound:
                     continue
 
             return metadata_ref
-        
+
         if domain_id:
             self.get_domain(domain_id)
         if project_id:
@@ -571,11 +572,11 @@ get_grant
 
         try:
             if project_id:
-            	metadata_ref += self._get_metadata(
+                metadata_ref += self._get_metadata(
                     user_id=user_id, tenant_id=project_id,
                     group_id=group_id).get('roles', [])
             if domain_id:
-            	metadata_ref += self._get_metadata(
+                metadata_ref += self._get_metadata(
                     user_id=user_id, tenant_id=domain_id,
                     group_id=group_id).get('roles', [])
         except exception.MetadataNotFound:
@@ -584,14 +585,15 @@ get_grant
         if inherited_to_projects is not None:
             if inherited_to_projects:
                 metadata_ref += _get_metadata_from_projects(
-                    user_id=user_id, group_id=group_id, projects_ids=parents_ids)
-            return [self.get_role(x) for x in
-                self._roles_from_role_dicts(metadata_ref, inherited_to_projects)]
+                    user_id=user_id, group_id=group_id,
+                    projects_ids=parents_ids)
+            return [self.get_role(x) for x in self._roles_from_role_dicts(
+                metadata_ref, inherited_to_projects)]
 
-        role_list = [self.get_role(x) for x in
-                self._roles_from_role_dicts(metadata_ref, True)]
-        role_list += [self.get_role(x) for x in
-                self._roles_from_role_dicts(metadata_ref, False)]
+        role_list = [self.get_role(x) for x in self._roles_from_role_dicts(
+            metadata_ref, True)]
+        role_list += [self.get_role(x) for x in self._roles_from_role_dicts(
+            metadata_ref, False)]
 
         return role_list
 
