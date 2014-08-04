@@ -4765,6 +4765,412 @@ class InheritanceTests(object):
         self.assertIn(domain_inherited_role, inheritable_roles_ref)
         self.assertIn(domain_inherited_role, inheritable_roles_ref)
 
+    def test_grants_for_user(self):
+        """Test inherited user roles.
+
+        Test Plan:
+
+        - Enable OS-INHERIT extension
+        - Create 5 roles
+        - Create a domain, with a project, a subproject and a user
+        - Check no roles yet exists
+        - Assign direct user roles to the project, the subproject and the
+          domain
+        - Get a list of effective roles on the project - should only get the
+          direct role
+        - Get a list of effective roles on the subproject - should only get the
+          direct role
+        - Now add an inherited user role to the domain
+        - Get a list of effective roles on the project - should have two roles,
+          one direct and one by virtue of the inherited user role
+        - Get a list of effective roles on the subproject - should have two
+          roles, one direct and one by virtue of the inherited user role
+        - Now add an inherited user role to the project
+        - Get a list of effective roles on the project - should have three
+          roles: one direct, one by virtue of the domain inherited user role
+          and one by virtue of the project inherited user role
+        - Get a list of effective roles on the subproject - should have three
+          roles: one direct, one by virtue of the domain inherited user role
+          and one by virtue of the project inherited user role
+        - Also get effective roles for the domain - the role marked as
+          inherited should not show up
+
+        """
+        self._enable_os_inherit_extension()
+        role_list = self._create_random_roles(5)
+        domain1 = self._create_random_domain()
+        user1 = self._create_random_user(domain_id=domain1['id'])
+        project1 = self._create_random_project(domain_id=domain1['id'])
+        subproject1 = self._create_random_project(
+            domain_id=domain1['id'], parent_project_id=project1['id'])
+
+        direct_domain_role = role_list[0]
+        direct_project_role = role_list[1]
+        direct_subproject_role = role_list[2]
+        domain_inherited_role = role_list[3]
+        project_inherited_role = role_list[4]
+
+        # Check that there are no roles yet
+        self.assertRaises(exception.RoleNotFound,
+                          self.assignment_api.get_inheritable_grant,
+                          role_id=direct_domain_role['id'],
+                          user_id=user1['id'], domain_id=domain1['id'])
+        self.assertRaises(exception.RoleNotFound,
+                          self.assignment_api.get_direct_grant,
+                          role_id=direct_domain_role['id'],
+                          user_id=user1['id'], domain_id=domain1['id'])
+
+        self.assertRaises(exception.RoleNotFound,
+                          self.assignment_api.get_inheritable_grant,
+                          role_id=direct_project_role['id'],
+                          user_id=user1['id'], project_id=project1['id'])
+        self.assertRaises(exception.RoleNotFound,
+                          self.assignment_api.get_direct_grant,
+                          role_id=direct_project_role['id'],
+                          user_id=user1['id'], project_id=project1['id'])
+
+        self.assertRaises(exception.RoleNotFound,
+                          self.assignment_api.get_inheritable_grant,
+                          role_id=direct_subproject_role['id'],
+                          user_id=user1['id'], project_id=subproject1['id'])
+        self.assertRaises(exception.RoleNotFound,
+                          self.assignment_api.get_direct_grant,
+                          role_id=direct_subproject_role['id'],
+                          user_id=user1['id'], project_id=subproject1['id'])
+
+        self.assertRaises(exception.RoleNotFound,
+                          self.assignment_api.get_inheritable_grant,
+                          role_id=domain_inherited_role['id'],
+                          user_id=user1['id'], domain_id=domain1['id'])
+        self.assertRaises(exception.RoleNotFound,
+                          self.assignment_api.get_direct_grant,
+                          role_id=domain_inherited_role['id'],
+                          user_id=user1['id'], domain_id=domain1['id'])
+
+        self.assertRaises(exception.RoleNotFound,
+                          self.assignment_api.get_inheritable_grant,
+                          role_id=project_inherited_role['id'],
+                          user_id=user1['id'], project_id=project1['id'])
+        self.assertRaises(exception.RoleNotFound,
+                          self.assignment_api.get_direct_grant,
+                          role_id=project_inherited_role['id'],
+                          user_id=user1['id'], project_id=project1['id'])
+
+        self.assertRaises(exception.RoleNotFound,
+                          self.assignment_api.get_inheritable_grant,
+                          role_id=project_inherited_role['id'],
+                          user_id=user1['id'], project_id=subproject1['id'])
+        self.assertRaises(exception.RoleNotFound,
+                          self.assignment_api.get_direct_grant,
+                          role_id=project_inherited_role['id'],
+                          user_id=user1['id'], project_id=subproject1['id'])
+
+        # Create the first three roles - none is inherited
+        self.assignment_api.create_grant(user_id=user1['id'],
+                                         project_id=project1['id'],
+                                         role_id=direct_project_role['id'])
+        self.assignment_api.create_grant(user_id=user1['id'],
+                                         project_id=subproject1['id'],
+                                         role_id=direct_subproject_role['id'])
+        self.assignment_api.create_grant(user_id=user1['id'],
+                                         domain_id=domain1['id'],
+                                         role_id=direct_domain_role['id'])
+
+        # Get the effective roles for the user and project, this should only
+        # include the direct role assignment on the project
+
+        self.assertRaises(exception.RoleNotFound,
+                          self.assignment_api.get_inheritable_grant,
+                          role_id=direct_project_role['id'],
+                          user_id=user1['id'], project_id=project1['id'])
+        self.assignment_api.get_direct_grant(
+            role_id=direct_project_role['id'], user_id=user1['id'],
+            project_id=project1['id'])
+
+        self.assertRaises(exception.RoleNotFound,
+                          self.assignment_api.get_inheritable_grant,
+                          role_id=direct_subproject_role['id'],
+                          user_id=user1['id'], project_id=subproject1['id'])
+        self.assignment_api.get_direct_grant(
+            role_id=direct_subproject_role['id'], user_id=user1['id'],
+            project_id=subproject1['id'])
+
+        self.assertRaises(exception.RoleNotFound,
+                          self.assignment_api.get_inheritable_grant,
+                          role_id=direct_domain_role['id'],
+                          user_id=user1['id'], domain_id=domain1['id'])
+        self.assignment_api.get_direct_grant(
+            role_id=direct_domain_role['id'], user_id=user1['id'],
+            domain_id=domain1['id'])
+
+        # Add an inherited role on the domain
+        self.assignment_api.create_grant(user_id=user1['id'],
+                                         domain_id=domain1['id'],
+                                         role_id=domain_inherited_role['id'],
+                                         inherited_to_projects=True)
+
+        self.assignment_api.get_inheritable_grant(
+            role_id=domain_inherited_role['id'], user_id=user1['id'],
+            project_id=project1['id'])
+        self.assertRaises(exception.RoleNotFound,
+                          self.assignment_api.get_direct_grant,
+                          role_id=domain_inherited_role['id'],
+                          user_id=user1['id'], project_id=project1['id'])
+
+        self.assignment_api.get_inheritable_grant(
+            role_id=domain_inherited_role['id'], user_id=user1['id'],
+            project_id=subproject1['id'])
+        self.assertRaises(exception.RoleNotFound,
+                          self.assignment_api.get_direct_grant,
+                          role_id=domain_inherited_role['id'],
+                          user_id=user1['id'], project_id=subproject1['id'])
+
+        self.assignment_api.get_inheritable_grant(
+            role_id=domain_inherited_role['id'], user_id=user1['id'],
+            domain_id=domain1['id'])
+        self.assignment_api.get_direct_grant(
+            role_id=domain_inherited_role['id'], user_id=user1['id'],
+            domain_id=domain1['id'])
+
+        # Add an inherited role on the project
+        self.assignment_api.create_grant(user_id=user1['id'],
+                                         project_id=project1['id'],
+                                         role_id=project_inherited_role['id'],
+                                         inherited_to_projects=True)
+
+        self.assignment_api.get_inheritable_grant(
+            role_id=project_inherited_role['id'], user_id=user1['id'],
+            project_id=project1['id'])
+        self.assignment_api.get_direct_grant(
+            role_id=project_inherited_role['id'], user_id=user1['id'],
+            project_id=project1['id'])
+
+        self.assignment_api.get_inheritable_grant(
+            role_id=project_inherited_role['id'], user_id=user1['id'],
+            project_id=subproject1['id'])
+        self.assertRaises(exception.RoleNotFound,
+                          self.assignment_api.get_direct_grant,
+                          role_id=project_inherited_role['id'],
+                          user_id=user1['id'], project_id=subproject1['id'])
+
+    def test_get_grants_for_user(self):
+        """Test inherited user roles.
+
+        Test Plan:
+
+        - Enable OS-INHERIT extension
+        - Create 5 roles
+        - Create a domain, with a project, a subproject and a user
+        - Check no roles yet exists
+        - Assign direct user roles to the project, the subproject and the
+          domain
+        - Get a list of effective roles on the project - should only get the
+          direct role
+        - Get a list of effective roles on the subproject - should only get the
+          direct role
+        - Now add an inherited user role to the domain
+        - Get a list of effective roles on the project - should have two roles,
+          one direct and one by virtue of the inherited user role
+        - Get a list of effective roles on the subproject - should have two
+          roles, one direct and one by virtue of the inherited user role
+        - Now add an inherited user role to the project
+        - Get a list of effective roles on the project - should have three
+          roles: one direct, one by virtue of the domain inherited user role
+          and one by virtue of the project inherited user role
+        - Get a list of effective roles on the subproject - should have three
+          roles: one direct, one by virtue of the domain inherited user role
+          and one by virtue of the project inherited user role
+        - Also get effective roles for the domain - the role marked as
+          inherited should not show up
+
+        """
+        self._enable_os_inherit_extension()
+        role_list = self._create_random_roles(5)
+        domain1 = self._create_random_domain()
+        user1 = self._create_random_user(domain_id=domain1['id'])
+        project1 = self._create_random_project(domain_id=domain1['id'])
+        subproject1 = self._create_random_project(
+            domain_id=domain1['id'], parent_project_id=project1['id'])
+
+        direct_domain_role = role_list[0]
+        direct_project_role = role_list[1]
+        direct_subproject_role = role_list[2]
+        domain_inherited_role = role_list[3]
+        project_inherited_role = role_list[4]
+
+        # Check that there are no roles yet
+        self.assertRaises(exception.RoleNotFound,
+                          self.assignment_api.get_grant,
+                          role_id=direct_domain_role['id'],
+                          user_id=user1['id'], domain_id=domain1['id'],
+                          parents_ids=[], inherited_to_projects=True)
+        self.assertRaises(exception.RoleNotFound,
+                          self.assignment_api.get_grant,
+                          role_id=direct_domain_role['id'],
+                          user_id=user1['id'], domain_id=domain1['id'],
+                          inherited_to_projects=None)
+
+        self.assertRaises(exception.RoleNotFound,
+                          self.assignment_api.get_grant,
+                          role_id=direct_project_role['id'],
+                          user_id=user1['id'], domain_id=domain1['id'],
+                          project_id=project1['id'], parents_ids=[],
+                          inherited_to_projects=True)
+        self.assertRaises(exception.RoleNotFound,
+                          self.assignment_api.get_grant,
+                          role_id=direct_project_role['id'],
+                          user_id=user1['id'], project_id=project1['id'],
+                          inherited_to_projects=None)
+
+        self.assertRaises(exception.RoleNotFound,
+                          self.assignment_api.get_grant,
+                          role_id=direct_subproject_role['id'],
+                          user_id=user1['id'], domain_id=domain1['id'],
+                          project_id=subproject1['id'],
+                          parents_ids=[project1['id']],
+                          inherited_to_projects=True)
+        self.assertRaises(exception.RoleNotFound,
+                          self.assignment_api.get_grant,
+                          role_id=direct_subproject_role['id'],
+                          user_id=user1['id'], project_id=subproject1['id'],
+                          inherited_to_projects=None)
+
+        self.assertRaises(exception.RoleNotFound,
+                          self.assignment_api.get_grant,
+                          role_id=domain_inherited_role['id'],
+                          user_id=user1['id'], domain_id=domain1['id'],
+                          parents_ids=[], inherited_to_projects=True)
+        self.assertRaises(exception.RoleNotFound,
+                          self.assignment_api.get_grant,
+                          role_id=domain_inherited_role['id'],
+                          user_id=user1['id'], domain_id=domain1['id'],
+                          inherited_to_projects=None)
+
+        self.assertRaises(exception.RoleNotFound,
+                          self.assignment_api.get_grant,
+                          role_id=project_inherited_role['id'],
+                          user_id=user1['id'], domain_id=domain1['id'],
+                          project_id=project1['id'], parents_ids=[],
+                          inherited_to_projects=True)
+        self.assertRaises(exception.RoleNotFound,
+                          self.assignment_api.get_grant,
+                          role_id=project_inherited_role['id'],
+                          user_id=user1['id'], project_id=project1['id'],
+                          inherited_to_projects=None)
+
+        self.assertRaises(exception.RoleNotFound,
+                          self.assignment_api.get_grant,
+                          role_id=project_inherited_role['id'],
+                          user_id=user1['id'], domain_id=domain1['id'],
+                          project_id=subproject1['id'],
+                          parents_ids=[project1['id']],
+                          inherited_to_projects=True)
+        self.assertRaises(exception.RoleNotFound,
+                          self.assignment_api.get_grant,
+                          role_id=project_inherited_role['id'],
+                          user_id=user1['id'], project_id=subproject1['id'],
+                          inherited_to_projects=None)
+
+        # Create the first three roles - none is inherited
+        self.assignment_api.create_grant(user_id=user1['id'],
+                                         project_id=project1['id'],
+                                         role_id=direct_project_role['id'])
+        self.assignment_api.create_grant(user_id=user1['id'],
+                                         project_id=subproject1['id'],
+                                         role_id=direct_subproject_role['id'])
+        self.assignment_api.create_grant(user_id=user1['id'],
+                                         domain_id=domain1['id'],
+                                         role_id=direct_domain_role['id'])
+
+        # Get the effective roles for the user and project, this should only
+        # include the direct role assignment on the project
+
+        self.assertRaises(exception.RoleNotFound,
+                          self.assignment_api.get_grant,
+                          role_id=direct_project_role['id'],
+                          user_id=user1['id'], domain_id=domain1['id'],
+                          project_id=project1['id'], parents_ids=[],
+                          inherited_to_projects=True)
+        self.assignment_api.get_grant(
+            role_id=direct_project_role['id'], user_id=user1['id'],
+            project_id=project1['id'], inherited_to_projects=None)
+
+        self.assertRaises(exception.RoleNotFound,
+                          self.assignment_api.get_grant,
+                          role_id=direct_subproject_role['id'],
+                          user_id=user1['id'], domain_id=domain1['id'],
+                          project_id=subproject1['id'],
+                          parents_ids=[project1['id']],
+                          inherited_to_projects=True)
+        self.assignment_api.get_grant(
+            role_id=direct_subproject_role['id'], user_id=user1['id'],
+            project_id=subproject1['id'])
+
+        self.assertRaises(exception.RoleNotFound,
+                          self.assignment_api.get_grant,
+                          role_id=direct_domain_role['id'],
+                          user_id=user1['id'], domain_id=domain1['id'],
+                          parents_ids=[], inherited_to_projects=True)
+        self.assignment_api.get_grant(
+            role_id=direct_domain_role['id'], user_id=user1['id'],
+            domain_id=domain1['id'])
+
+        # Add an inherited role on the domain
+        self.assignment_api.create_grant(user_id=user1['id'],
+                                         domain_id=domain1['id'],
+                                         role_id=domain_inherited_role['id'],
+                                         inherited_to_projects=True)
+
+        self.assignment_api.get_grant(
+            role_id=domain_inherited_role['id'], user_id=user1['id'],
+            domain_id=domain1['id'], project_id=project1['id'], parents_ids=[],
+            inherited_to_projects=True)
+        self.assertRaises(exception.RoleNotFound,
+                          self.assignment_api.get_grant,
+                          role_id=domain_inherited_role['id'],
+                          user_id=user1['id'], project_id=project1['id'])
+
+        self.assignment_api.get_grant(
+            role_id=domain_inherited_role['id'], user_id=user1['id'],
+            domain_id=domain1['id'], project_id=subproject1['id'],
+            parents_ids=[project1['id']], inherited_to_projects=True)
+        self.assertRaises(exception.RoleNotFound,
+                          self.assignment_api.get_grant,
+                          role_id=domain_inherited_role['id'],
+                          user_id=user1['id'], project_id=subproject1['id'])
+
+        self.assignment_api.get_grant(
+            role_id=domain_inherited_role['id'], user_id=user1['id'],
+            domain_id=domain1['id'], parents_ids=[],
+            inherited_to_projects=True)
+        self.assignment_api.get_grant(
+            role_id=domain_inherited_role['id'], user_id=user1['id'],
+            domain_id=domain1['id'], inherited_to_projects=None)
+
+        # Add an inherited role on the project
+        self.assignment_api.create_grant(user_id=user1['id'],
+                                         project_id=project1['id'],
+                                         role_id=project_inherited_role['id'],
+                                         inherited_to_projects=True)
+
+        self.assignment_api.get_grant(
+            role_id=project_inherited_role['id'], user_id=user1['id'],
+            domain_id=domain1['id'], project_id=project1['id'], parents_ids=[],
+            inherited_to_projects=True)
+        self.assignment_api.get_grant(
+            role_id=project_inherited_role['id'], user_id=user1['id'],
+            project_id=project1['id'], inherited_to_projects=None)
+
+        self.assignment_api.get_grant(
+            role_id=project_inherited_role['id'], user_id=user1['id'],
+            domain_id=domain1['id'], project_id=subproject1['id'],
+            parents_ids=[project1['id']], inherited_to_projects=True)
+        self.assertRaises(exception.RoleNotFound,
+                          self.assignment_api.get_grant,
+                          role_id=project_inherited_role['id'],
+                          user_id=user1['id'], project_id=subproject1['id'],
+                          inherited_to_projects=None)
+
     def test_get_roles_for_user(self):
         """Test inherited user roles.
 
