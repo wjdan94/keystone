@@ -25,7 +25,7 @@ CONF = config.CONF
 
 class Assignment(kvs.Base, assignment.Driver):
     """KVS Assignment backend.
-get_grant
+
     This backend uses the following mappings to store data:
 
     * Domains:
@@ -604,17 +604,16 @@ get_grant
                   parents_ids=None, inherited_to_projects=False):
         self.get_role(role_id)
 
-        if group_id:
-            self.get_group(group_id)
         if domain_id:
             self.get_domain(domain_id)
         if project_id:
             self.get_project(project_id)
 
-        role_ids = self._get_domain_and_projects_roles(user_id, project_id,
-                                                       parents_ids, domain_id,
-                                                       group_id,
-                                                       inherited_to_projects)
+        role_ids = [ref['id'] for ref in
+                    self._get_domain_and_projects_roles(user_id, project_id,
+                                                        parents_ids, domain_id,
+                                                        group_id,
+                                                        inherited_to_projects)]
 
         if role_id not in role_ids:
             raise exception.RoleNotFound(role_id=role_id)
