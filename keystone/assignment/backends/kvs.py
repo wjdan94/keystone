@@ -146,18 +146,46 @@ get_grant
         except exception.NotFound:
             raise exception.MetadataNotFound()
 
-    def _get_metadata_from_projects(self, user_id=None,
-                                    projects_ids=None, group_id=None):
+    def _get_domain_and_projects_roles(self, user_id, project_id,
+                                       parents_ids, domain_id,
+                                       group_id, inherited_to_projects):
+        def _get_metadata_from_projects(user_id=None, projects_ids=None,
+                                        group_id=None):
+            metadata_refs = []
+            for project_id in projects_ids:
+                try:
+                    metadata_refs += self._get_metadata(
+                        user_id=user_id, tenant_id=project_id,
+                        domain_id=None, group_id=group_id).get('roles', [])
+                except exception.MetadataNotFound:
+                    continue
+
+            return metadata_refs
+
         metadata_refs = []
-        for project_id in projects_ids:
+        projects_ids = parents_ids or []
+
+        if project_id:
+            projects_ids += [project_id]
+        if domain_id:
             try:
                 metadata_refs += self._get_metadata(
-                    user_id=user_id, tenant_id=project_id,
-                    domain_id=None, group_id=group_id).get('roles', [])
+                    user_id=user_id, tenant_id=None,
+                    domain_id=domain_id, group_id=group_id).get('roles', [])
             except exception.MetadataNotFound:
-                continue
+                pass
 
-        return metadata_refs
+        metadata_refs += _get_metadata_from_projects(
+            user_id, projects_ids, group_id)
+
+        if inherited_to_projects:
+            role_list = [self.get_role(x) for x in
+                         self._roles_from_role_dicts(
+                             metadata_refs, inherited_to_projects)]
+        else:
+            role_list = [self.get_role(x['id']) for x in metadata_refs]
+
+        return role_list
 
     def get_role(self, role_id):
         try:
@@ -561,64 +589,32 @@ get_grant
     def list_grants(self, user_id=None, group_id=None,
                     domain_id=None, project_id=None,
                     parents_ids=None, inherited_to_projects=False):
-        projects_ids = parents_ids or []
-
         if project_id:
             self.get_project(project_id)
-            projects_ids += [project_id]
-
-        metadata_refs = []
         if domain_id:
             self.get_domain(domain_id)
-            try:
-                metadata_refs += self._get_metadata(
-                    user_id=user_id, tenant_id=None,
-                    domain_id=domain_id, group_id=group_id).get('roles', [])
-            except exception.MetadataNotFound:
-                pass
 
-        metadata_refs += self._get_metadata_from_projects(
-            user_id, projects_ids, group_id)
-
-        if inherited_to_projects:
-            role_list = [self.get_role(x) for x in
-                         self._roles_from_role_dicts(
-                             metadata_refs, inherited_to_projects)]
-        else:
-            role_list = [self.get_role(x['id']) for x in metadata_refs]
-
-        return role_list
+        return self._get_domain_and_projects_roles(user_id, project_id,
+                                                   parents_ids, domain_id,
+                                                   group_id,
+                                                   inherited_to_projects)
 
     def get_grant(self, role_id, user_id=None, group_id=None,
                   domain_id=None, project_id=None,
                   parents_ids=None, inherited_to_projects=False):
-        projects_ids = parents_ids or []
         self.get_role(role_id)
 
         if group_id:
             self.get_group(group_id)
-
-        metadata_refs = []
         if domain_id:
             self.get_domain(domain_id)
-            try:
-                metadata_refs += self._get_metadata(
-                    user_id=user_id, tenant_id=None,
-                    domain_id=domain_id, group_id=group_id).get('roles', [])
-            except exception.MetadataNotFound:
-                pass
         if project_id:
             self.get_project(project_id)
-            projects_ids += [project_id]
 
-        metadata_refs += self._get_metadata_from_projects(
-            user_id, projects_ids, group_id)
-
-        if inherited_to_projects:
-            role_ids = self._roles_from_role_dicts(
-                metadata_refs, inherited_to_projects)
-        else:
-            role_ids = [x['id'] for x in metadata_refs]
+        role_ids = self._get_domain_and_projects_roles(user_id, project_id,
+                                                       parents_ids, domain_id,
+                                                       group_id,
+                                                       inherited_to_projects)
 
         if role_id not in role_ids:
             raise exception.RoleNotFound(role_id=role_id)
