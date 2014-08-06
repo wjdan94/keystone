@@ -6427,6 +6427,90 @@ class InheritanceTests(object):
         self.assertIn(subproject2ab['id'], user_projects)
         self.assertIn(subproject2a['id'], user_projects)
 
+    def _assert_actor_grant_on_projects(self, role, actor,
+                                         actor_type, projects):
+        for project in projects:
+            self.assignment_api.get_inheritable_grant(
+                role_id=role['id'],
+                user_id=(actor['id']
+                         if actor_type == 'user' else None),
+                group_id=(actor['id']
+                          if actor_type == 'group' else None),
+                project_id=project['id'])
+
+    def _revoke_inherited_grant_for_actor_on_target(self, role,
+                                                    actor, actor_type,
+                                                    parent, child,
+                                                    domain=None):
+        child['parent_project_id'] = parent['id']
+        self.assignment_api.update_project(child['id'], child)
+
+        projects = [parent, child] if domain else [child]
+
+        self.assertRaises(exception.RoleNotFound,
+                          self._assert_actor_grant_on_projects,
+                          role, actor, actor_type, projects)
+
+        self.assignment_api.create_grant(
+            user_id=(actor['id']
+                     if actor_type == 'user' else None),
+            group_id=(actor['id']
+                      if actor_type == 'group' else None),
+            project_id=None if domain else parent['id'],
+            domain_id=domain['id'] if domain else None,
+            role_id=role['id'],
+            inherited_to_projects=True)
+
+        self._assert_actor_grant_on_projects(role, actor, actor_type, projects)
+
+        self.assignment_api.delete_grant(
+            user_id=(actor['id']
+                     if actor_type == 'user' else None),
+            group_id=(actor['id']
+                      if actor_type == 'group' else None),
+            project_id=None if domain else parent['id'],
+            domain_id=domain['id'] if domain else None,
+            role_id=role['id'],
+            inherited_to_projects=True)
+
+        self.assertRaises(exception.RoleNotFound,
+                          self._assert_actor_grant_on_projects,
+                          role, actor, actor_type, projects)
+
+    def test_revoke_inherited_grant_for_user_on_project(self):
+        self._revoke_inherited_grant_for_actor_on_target(
+            self.role_admin,
+            self.user_foo, 'user',
+            self.tenant_bar, self.tenant_baz)
+
+    def test_revoke_inherited_grant_for_group_on_project(self):
+        group = {'domain_id': self.domain_default['id'],
+                 'name': uuid.uuid4().hex}
+        group = self.identity_api.create_group(group)
+
+        self._revoke_inherited_grant_for_actor_on_target(
+            self.role_admin,
+            group, 'group',
+            self.tenant_bar, self.tenant_baz)
+
+    def test_revoke_inherited_grant_for_user_on_domain(self):
+        self._revoke_inherited_grant_for_actor_on_target(
+            self.role_admin,
+            self.user_foo, 'user',
+            self.tenant_bar, self.tenant_baz,
+            self.domain_default)
+
+    def test_revoke_inherited_grant_for_group_on_domain(self):
+        group = {'domain_id': self.domain_default['id'],
+                 'name': uuid.uuid4().hex}
+        group = self.identity_api.create_group(group)
+
+        self._revoke_inherited_grant_for_actor_on_target(
+            self.role_admin,
+            group, 'group',
+            self.tenant_bar, self.tenant_baz,
+            self.domain_default)
+
 
 class FilterTests(filtering.FilterTests):
     def test_list_users_filtered(self):

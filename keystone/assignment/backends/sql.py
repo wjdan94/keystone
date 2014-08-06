@@ -494,8 +494,7 @@ class Assignment(keystone_assignment.Driver):
                     'Unexpected assignment type encountered, %s') %
                     ref.type)
             assignment['role_id'] = ref.role_id
-            if ref.inherited and (ref.type == AssignmentType.USER_DOMAIN or
-                                  ref.type == AssignmentType.GROUP_DOMAIN):
+            if ref.inherited:
                 assignment['inherited_to_projects'] = 'projects'
             return assignment
 
