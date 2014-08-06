@@ -6428,7 +6428,7 @@ class InheritanceTests(object):
         self.assertIn(subproject2a['id'], user_projects)
 
     def _assert_actor_grant_on_projects(self, role, actor,
-                                         actor_type, projects):
+                                        actor_type, projects):
         for project in projects:
             self.assignment_api.get_inheritable_grant(
                 role_id=role['id'],

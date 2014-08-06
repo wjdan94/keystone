@@ -766,7 +766,8 @@ class RoleAssignmentV3(controller.V3Controller):
             return project_entry
 
         def _build_project_equivalent_of_group_target_role(
-                user_id, group_id, project_id, target_id, target_type, template):
+                user_id, group_id, project_id,
+                target_id, target_type, template):
             """Create a user project equivalent to the domain group one.
 
             The template has had the 'domain' and 'group' entities removed, so
