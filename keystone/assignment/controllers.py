@@ -528,18 +528,18 @@ class RoleV3(controller.V3Controller):
                     group_id=None, domain_id=None, project_id=None):
         """Lists roles granted to user/group on either a domain or project."""
 
-        def only_inheritable(context):
-            return 'inheritable' in context['query_string'] and \
-                self.query_filter_is_true(context['query_string']
-                                           ['inheritable'])
-
         self._require_domain_xor_project(domain_id, project_id)
         self._require_user_xor_group(user_id, group_id)
 
         if self._check_if_inherited(context):
+            only_inheritable = \
+                'inheritable' in context['query_string'] and \
+                self.query_filter_is_true(context['query_string']
+                                          ['inheritable'])
+
             refs = self.assignment_api.list_inheritable_grants(
                 user_id, group_id, domain_id, project_id)
-            if not only_inheritable(context):
+            if not only_inheritable:
                 direct_grants = self.assignment_api.list_direct_grants(
                     user_id=user_id, group_id=group_id,
                     domain_id=domain_id, project_id=project_id)
