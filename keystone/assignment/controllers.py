@@ -653,7 +653,13 @@ class RoleAssignmentV3(controller.V3Controller):
         if 'project_id' in entity:
             formatted_entity['scope'] = (
                 {'project': {'id': entity['project_id']}})
-            target_link = '/projects/%s' % entity['project_id']
+            if 'inherited_to_projects' in entity:
+                formatted_entity['scope']['OS-INHERIT:inherited_to'] = (
+                    'projects')
+                target_link = '/OS-INHERIT/projects/%s' % entity['project_id']
+                suffix = '/inherited_to_projects'
+            else:
+                target_link = '/projects/%s' % entity['project_id']
         if 'domain_id' in entity:
             formatted_entity['scope'] = (
                 {'domain': {'id': entity['domain_id']}})
