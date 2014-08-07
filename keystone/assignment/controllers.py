@@ -820,10 +820,12 @@ class RoleAssignmentV3(controller.V3Controller):
                     target_id = base_entry['scope']['domain']['id']
                     base_entry['scope'].pop('domain')
                 else:
+                    project_id = r['scope']['project']['id']
                     project_ids = (
+                        [project_id] +
                         [x['id'] for x in
                             self.assignment_api.list_project_children(
-                                r['scope']['project']['id'])])
+                                project_id)])
                     base_entry = copy.deepcopy(r)
                     target_type = 'projects'
                     target_id = base_entry['scope']['project']['id']
