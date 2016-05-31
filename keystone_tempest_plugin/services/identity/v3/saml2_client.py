@@ -21,7 +21,7 @@ from tempest.lib.common import rest_client
 from keystone_tempest_plugin.services.identity import clients
 
 
-class Saml2Client(rest_client.RestClient):
+class Saml2Client(clients.Federation):
 
     HTTP_MOVED_TEMPORARILY = 302
     HTTP_SEE_OTHER = 303
@@ -44,8 +44,8 @@ class Saml2Client(rest_client.RestClient):
                                          '@responseConsumerURL')
 
     def _idp_auth_subpath(self, idp_id, protocol_id):
-        return 'OS-FEDERATION/identity_providers/%s/protocols/%s/auth' % (
-            idp_id, protocol_id)
+        return '%s/identity_providers/%s/protocols/%s/auth' % (
+            self.subpath_prefix, idp_id, protocol_id)
 
     def send_service_provider_request(self, idp_id, protocol_id):
        resp, body = self.get(
