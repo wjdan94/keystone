@@ -23,8 +23,8 @@ class TestSaml2FederatedAuthentication(base.BaseIdentityTest):
 
     def setUp(self):
         super(TestSaml2FederatedAuthentication, self).setUp()
-        self.idp_id = CONF.scenario_group.fed_idp_id
-        self.protocol_id = CONF.scenario_group.fed_protocol_id
+        self.idp_id = CONF.scenario.fed_idp_id
+        self.protocol_id = CONF.scenario.fed_protocol_id
 
     def test_request_unscoped_token(self):
         relay_state, sp_response_consumer_url = (
