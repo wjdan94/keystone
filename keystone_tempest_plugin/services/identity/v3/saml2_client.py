@@ -47,7 +47,7 @@ class Saml2Client(rest_client.RestClient):
         return 'OS-FEDERATION/identity_providers/%s/protocols/%s/auth' % (
             idp_id, protocol_id)
 
-    def send_service_provider_request(self, idp_id, protocol_id)
+    def send_service_provider_request(self, idp_id, protocol_id):
        resp, body = self.get(
             self._idp_auth_subpath(idp_id, protocol_id),
             headers=self.ECP_SP_EMPTY_REQUEST_HEADERS
