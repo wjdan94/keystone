@@ -40,4 +40,8 @@ class KeystoneTempestPlugin(plugins.TempestPlugin):
 
     def get_opt_lists(self):
         return [(project_config.identity_group.name,
-                 project_config.IdentityGroup)]
+                 project_config.IdentityGroup),
+                (project_config.identity_feature_group.name,
+                 project_config.IdentityFeatureGroup),
+                (project_config.scenario_group.name,
+                 project_config.ScenarioGroup),]
