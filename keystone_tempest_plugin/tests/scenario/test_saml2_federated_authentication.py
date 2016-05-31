@@ -12,7 +12,7 @@
 # License for the specific language governing permissions and limitations
 # under the License.
 
-from keystone_tempest_plugin import config
+from tempest import config
 from keystone_tempest_plugin.tests import base
 
 
