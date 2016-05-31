@@ -22,7 +22,7 @@ CONF = config.CONF
 class TestSaml2FederatedAuthentication(base.BaseIdentityTest):
 
     def setUp(self):
-        super(TestSaml2Workflow, self).setUp()
+        super(TestSaml2FederatedAuthentication, self).setUp()
         self.idp_id = CONF.scenario_group.fed_idp_id
         self.protocol_id = CONF.scenario_group.fed_protocol_id
 
