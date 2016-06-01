@@ -12,8 +12,8 @@
 # License for the specific language governing permissions and limitations
 # under the License.
 
-import copy
 import base64
+import copy
 import json
 
 from lxml import etree
@@ -45,15 +45,17 @@ class Saml2Client(clients.Federation):
         self.expected_success(200, resp.status)
 
         # Parse body response as XML
-        return resp, etree.XML(body)
+        body = etree.XML(body)
+
+        return rest_client.ResponseBody(resp, body)
 
     def _prepare_sp_saml2_authn_response(self, saml2_idp_authn_response,
                                          relay_state):
         saml2_idp_authn_response[0][0] = relay_state
 
-    def _prepare_idp_saml2_request(self, saml2_authn_request):
-        header = saml2_authn_request[0]
-        saml2_authn_request.remove(header)
+    def _prepare_idp_saml2_request(self, idp_saml2_request):
+        header = idp_saml2_request[0]
+        idp_saml2_request.remove(header)
 
     def _basic_auth(self, username, password):
         b64string = base64.encodestring(
@@ -63,7 +65,8 @@ class Saml2Client(clients.Federation):
     def send_identity_provider_authn_request(self, saml2_authn_request,
                                              idp_url, username, password):
 
-        self._prepare_idp_saml2_request(copy.deepcopy(saml2_authn_request))
+        idp_saml2_request = copy.deepcopy(saml2_authn_request)
+        self._prepare_idp_saml2_request(idp_saml2_request)
 
         # Send HTTP basic authn request to the identity provider
         headers = {
@@ -74,17 +77,20 @@ class Saml2Client(clients.Federation):
              idp_url,
              'POST',
              headers=headers,
-             body=etree.tostring(saml2_authn_request)
+             body=etree.tostring(idp_saml2_request)
         )
         self.expected_success(200, resp.status)
 
         # Parse body response as XML
-        return resp, etree.XML(body)
+        body = etree.XML(body)
+
+        return rest_client.ResponseBody(resp, body)
 
     def send_service_provider_saml2_authn_response(
         self, saml2_idp_authn_response, relay_state, idp_consumer_url):
 
-        _prepare_sp_saml2_authn_response(saml2_idp_authn_response, relay_state)
+        self._prepare_sp_saml2_authn_response(
+            saml2_idp_authn_response, relay_state)
 
         resp, body = self.raw_request(
             idp_consumer_url,
@@ -92,7 +98,7 @@ class Saml2Client(clients.Federation):
             headers=self.ECP_SP_SAML2_REQUEST_HEADERS,
             body=etree.tostring(saml2_idp_authn_response)
         )
-        return resp, body
+        return rest_client.ResponseBody(resp, body)
 
     def send_service_provider_saml2_authn_request(self, sp_url):
         resp, body = self.raw_request(
@@ -101,4 +107,5 @@ class Saml2Client(clients.Federation):
             headers=self.ECP_SP_SAML2_REQUEST_HEADERS
         )
         self.expected_success(200, resp.status)
-        return resp, json.load(body)
+        body = json.load(body)
+        return rest_client.ResponseBody(resp, body)
