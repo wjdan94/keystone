@@ -41,7 +41,7 @@ class TestSaml2FederatedAuthentication(base.BaseIdentityTest):
         self.idp_id = CONF.scenario.fed_idp_id
         self.protocol_id = CONF.scenario.fed_protocol_id
 
-    def _assert_consumer_url(self, authn_request, idp_authn_response):
+    def _assert_consumer_url(self, saml2_authn_request, idp_authn_response):
         sp_consumer_url = saml2_authn_request.xpath(
             self.ECP_SERVICE_PROVIDER_CONSUMER_URL,
             namespaces=self.ECP_SAML2_NAMESPACES)
