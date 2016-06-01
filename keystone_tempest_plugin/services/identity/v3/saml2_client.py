@@ -12,6 +12,7 @@
 # License for the specific language governing permissions and limitations
 # under the License.
 
+import copy
 import base64
 import json
 
@@ -45,8 +46,6 @@ class Saml2Client(clients.Federation):
              self._idp_auth_subpath(idp_id, protocol_id),
              headers=self.ECP_SP_EMPTY_REQUEST_HEADERS
         )
-        print('####################################################')
-        print(resp.__dict__)
 
         # Parse body response as XML
         return etree.XML(body)
@@ -63,7 +62,7 @@ class Saml2Client(clients.Federation):
     def send_identity_provider_authn_request(self, saml2_authn_request,
                                              idp_url, username, password):
 
-        self._prepare_idp_saml2_request(saml2_authn_request)
+        self._prepare_idp_saml2_request(copy.deepcopy(saml2_authn_request))
 
         # Send HTTP basic authn request to the identity provider
         headers = {

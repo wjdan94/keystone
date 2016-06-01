@@ -47,10 +47,12 @@ class TestSaml2FederatedAuthentication(base.BaseIdentityTest):
         sp_consumer_url = saml2_authn_request.xpath(
             self.ECP_SERVICE_PROVIDER_CONSUMER_URL,
             namespaces=self.ECP_SAML2_NAMESPACES)
+        self.assertEqual(1, len(sp_consumer_url))
 
         idp_consumer_url = idp_authn_response.xpath(
             self.ECP_IDP_CONSUMER_URL,
             namespaces=self.ECP_SAML2_NAMESPACES)[0]
+        self.assertEqual(1, len(idp_consumer_url))
 
         self.assertEqual(sp_consumer_url[0], idp_consumer_url[0])
 
@@ -58,14 +60,9 @@ class TestSaml2FederatedAuthentication(base.BaseIdentityTest):
         saml2_authn_request = (
             self.saml2_client.send_service_provider_request(self.idp_id,
                 self.protocol_id))
-        print('$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$')
-        print(etree.tostring(saml2_authn_request, pretty_print=True))
         saml2_idp_authn_response = (
             self.saml2_client.send_identity_provider_authn_request(
                 saml2_authn_request, self.idp_url, self.username,
                 self.password))
-        print('$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$')
-        print(etree.tostring(saml2_idp_authn_response, pretty_print=True))
-        print(idp_consumer_url)
-        # self._assert_consumer_url(
-        #     saml2_authn_request, saml2_idp_authn_response)
+        self._assert_consumer_url(
+            saml2_authn_request, saml2_idp_authn_response)
