@@ -99,7 +99,7 @@ class Saml2Client(clients.Federation):
             allow_redirects=False
         )
 
-    def send_service_provider_saml2_authn_request(self, sp_url):
+    def send_service_provider_unscoped_token_request(self, sp_url):
         resp, body = self.raw_request(
             sp_url,
             'GET',
