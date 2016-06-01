@@ -59,7 +59,8 @@ class TestSaml2FederatedAuthentication(base.BaseIdentityTest):
             self.saml2_client.send_service_provider_request(self.idp_id,
                 self.protocol_id))
         saml2_idp_authn_response = (
-            self.saml2_client.send_idp_authn_request(saml2_authn_request,
-                self.idp_url, self.username, self.password))
+            self.saml2_client.send_identity_provider_authn_request(
+                saml2_authn_request, self.idp_url, self.username,
+                self.password))
         self._assert_consumer_url(
             saml2_authn_request, saml2_idp_authn_response)
