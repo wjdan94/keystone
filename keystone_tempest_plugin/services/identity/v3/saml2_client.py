@@ -70,12 +70,15 @@ class Saml2Client(clients.Federation):
         self._prepare_idp_saml2_request(saml2_authn_request)
 
         # Send HTTP basic authn request to the identity provider
+        headers = {
+            'Content-Type': 'text/xml',
+            'Authorization': self._basic_auth(username, password)
+        }
         resp, body = self.raw_request(
              idp_url,
              'POST',
-             etree.tostring(saml2_authn_request),
-             headers={'Content-Type': 'text/xml',
-                      'Authorization': self._basic_auth(username, password)}
+             headers=headers,
+             body=etree.tostring(saml2_authn_request)
         )
 
         # Parse body response as XML
