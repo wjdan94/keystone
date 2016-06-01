@@ -44,7 +44,9 @@ class Saml2Client(clients.Federation):
         resp, body = self.get(
              self._idp_auth_subpath(idp_id, protocol_id),
              headers=self.ECP_SP_EMPTY_REQUEST_HEADERS
-         )
+        )
+        print('####################################################')
+        print(resp.__dict__)
 
         # Parse body response as XML
         return etree.XML(body)
