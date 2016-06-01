@@ -91,17 +91,13 @@ class Saml2Client(clients.Federation):
 
         # TODO(rodrigods): change to self.raw_request() when it receives
         # support to not follow redirect responses.
-        resp = requests.post(
+        return requests.post(
             idp_consumer_url,
             headers=self.ECP_SP_SAML2_REQUEST_HEADERS,
             data=etree.tostring(saml2_idp_authn_response),
             # Do not follow HTTP redirect
             allow_redirects=False
         )
-        print('$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$')
-        print(resp.__dict__)
-        print(resp.raw)
-        return resp.headers, resp.content
 
     def send_service_provider_saml2_authn_request(self, sp_url):
         resp, body = self.raw_request(

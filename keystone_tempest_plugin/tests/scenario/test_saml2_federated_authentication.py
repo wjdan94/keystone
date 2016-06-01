@@ -84,9 +84,9 @@ class TestSaml2FederatedAuthentication(base.BaseIdentityTest):
                 saml2_idp_authn_response, relay_state, idp_consumer_url))
 
         # Must receive a redirect from service provider
-        self.assertIn(resp.status,
+        self.assertIn(resp.status_code,
                       [self.HTTP_MOVED_TEMPORARILY, self.HTTP_SEE_OTHER])
 
-        sp_url = resp['location']
+        sp_url = resp.headers['location']
         resp, body = self.send_service_provider_saml2_authn_response(sp_url)
         self.assertIn('X-Subject-Token', resp)
