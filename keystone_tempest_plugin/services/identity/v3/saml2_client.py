@@ -98,6 +98,9 @@ class Saml2Client(clients.Federation):
             # Do not follow HTTP redirect
             allow_redirects=False
         )
+        print('$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$')
+        print(resp.__dict__)
+        print(resp.raw)
         return resp.headers, resp.content
 
     def send_service_provider_saml2_authn_request(self, sp_url):
