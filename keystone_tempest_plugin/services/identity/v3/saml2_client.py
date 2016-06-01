@@ -49,12 +49,6 @@ class Saml2Client(clients.Federation):
         # Parse body response as XML
         return etree.XML(body)
 
-        saml2_authn_request = etree.XML(body)
-
-        relay_state = saml2_authn_request.xpath(
-            self.ECP_RELAY_STATE, namespaces=self.ECP_SAML2_NAMESPACES)
-        return relay_state[0], sp_response_consumer_url[0]
-
     def _prepare_idp_saml2_request(self, saml2_authn_request):
         header = saml2_authn_request[0]
         saml2_authn_request.remove(header)
