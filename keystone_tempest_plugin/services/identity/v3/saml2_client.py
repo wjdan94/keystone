@@ -12,6 +12,7 @@
 # License for the specific language governing permissions and limitations
 # under the License.
 
+import base64
 import json
 
 from lxml import etree
@@ -34,31 +35,51 @@ class Saml2Client(clients.Federation):
 
     ECP_RELAY_STATE = '//ecp:RelayState'
 
-    ECP_SAML2_NAMESPACES = {
-        'ecp': 'urn:oasis:names:tc:SAML:2.0:profiles:SSO:ecp',
-        'S': 'http://schemas.xmlsoap.org/soap/envelope/',
-        'paos': 'urn:liberty:paos:2003-08'
-   }
-
-    ECP_SERVICE_PROVIDER_CONSUMER_URL = ('/S:Envelope/S:Header/paos:Request/'
-                                         '@responseConsumerURL')
 
     def _idp_auth_subpath(self, idp_id, protocol_id):
         return '%s/identity_providers/%s/protocols/%s/auth' % (
             self.subpath_prefix, idp_id, protocol_id)
 
     def send_service_provider_request(self, idp_id, protocol_id):
-       resp, body = self.get(
-            self._idp_auth_subpath(idp_id, protocol_id),
-            headers=self.ECP_SP_EMPTY_REQUEST_HEADERS
+        resp, body = self.get(
+             self._idp_auth_subpath(idp_id, protocol_id),
+             headers=self.ECP_SP_EMPTY_REQUEST_HEADERS
+         )
+
+        # Parse body response as XML
+        return etree.XML(body)
+
+        saml2_authn_request = etree.XML(body)
+
+        relay_state = saml2_authn_request.xpath(
+            self.ECP_RELAY_STATE, namespaces=self.ECP_SAML2_NAMESPACES)
+        return relay_state[0], sp_response_consumer_url[0]
+
+    def _prepare_idp_saml2_request(self, saml2_authn_request):
+        header = saml2_authn_request[self.SAML2_HEADER_INDEX]
+        saml2_authn_request.remove(header)
+
+    def _basic_auth(self, username, password):
+        b64string = base64.encodestring(
+            '%s:%s' % (username, password)).replace('\n', '')
+        return 'Basic %s' % b64string
+
+    def send_identity_provider_authn_request(self, saml2_authn_request,
+                                             idp_url, username, password):
+
+        self._prepare_idp_saml2_request(saml2_authn_request)
+
+        # Send HTTP basic authn request to the identity provider
+        resp, body = self.raw_request(
+             idp_url,
+             'POST',
+             etree.tostring(saml2_authn_request),
+             headers={'Content-Type': 'text/xml'
+                      'Authorization': self._basic_auth(username, password)}
         )
 
-       # Parse body response as XML
-       saml2_authn_request = etree.XML(body)
+        # Parse body response as XML
+        return etree.XML(body)
 
-       relay_state = saml2_authn_request.xpath(
-           self.ECP_RELAY_STATE, namespaces=self.ECP_SAML2_NAMESPACES)
-       sp_response_consumer_url = saml2_authn_request.xpath(
-           self.ECP_SERVICE_PROVIDER_CONSUMER_URL,
-           namespaces=self.ECP_SAML2_NAMESPACES)
-       return relay_state[0], sp_response_consumer_url[0]
+    def send_service_provider_saml2_authn_response(self):
+        pass
