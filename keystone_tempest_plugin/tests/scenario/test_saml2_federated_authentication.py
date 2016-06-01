@@ -61,7 +61,7 @@ class TestSaml2FederatedAuthentication(base.BaseIdentityTest):
         self.assertEqual(1, len(idp_consumer_url))
 
         self.assertEqual(sp_consumer_url[0], idp_consumer_url[0])
-        return idp_consumer_url
+        return idp_consumer_url[0]
 
     def test_request_unscoped_token(self):
         resp, saml2_authn_request = (
