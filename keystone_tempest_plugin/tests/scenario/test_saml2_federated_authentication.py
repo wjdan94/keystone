@@ -77,7 +77,7 @@ class TestSaml2FederatedAuthentication(base.BaseIdentityTest):
         idp_consumer_url = self._assert_consumer_url(
             saml2_authn_request, saml2_idp_authn_response)
 
-        relay_state = self.saml2_authn_request.xpath(
+        relay_state = saml2_authn_request.xpath(
             self.ECP_RELAY_STATE, namespaces=self.ECP_SAML2_NAMESPACES)[0]
         resp, body = (
             self.saml2_client.send_service_provider_saml2_authn_response(
