@@ -25,17 +25,13 @@ from keystone_tempest_plugin.services.identity import clients
 
 class Saml2Client(clients.Federation):
 
-    HTTP_MOVED_TEMPORARILY = 302
-    HTTP_SEE_OTHER = 303
-
     ECP_SP_EMPTY_REQUEST_HEADERS = {
         'Accept': 'text/html, application/vnd.paos+xml',
         'PAOS': ('ver="urn:liberty:paos:2003-08";"urn:oasis:names:tc:'
         'SAML:2.0:profiles:SSO:ecp"')
     }
 
-    ECP_RELAY_STATE = '//ecp:RelayState'
-
+    ECP_SP_SAML2_REQUEST_HEADERS = {'Content-Type': 'application/vnd.paos+xml'}
 
     def _idp_auth_subpath(self, idp_id, protocol_id):
         return '%s/identity_providers/%s/protocols/%s/auth' % (
@@ -46,9 +42,14 @@ class Saml2Client(clients.Federation):
              self._idp_auth_subpath(idp_id, protocol_id),
              headers=self.ECP_SP_EMPTY_REQUEST_HEADERS
         )
+        self.expected_success(200, resp.status)
 
         # Parse body response as XML
-        return etree.XML(body)
+        return resp, etree.XML(body)
+
+    def _prepare_sp_saml2_authn_response(self, saml2_idp_authn_response,
+                                         relay_state):
+        saml2_idp_authn_response[0][0] = relay_state
 
     def _prepare_idp_saml2_request(self, saml2_authn_request):
         header = saml2_authn_request[0]
@@ -75,9 +76,29 @@ class Saml2Client(clients.Federation):
              headers=headers,
              body=etree.tostring(saml2_authn_request)
         )
+        self.expected_success(200, resp.status)
 
         # Parse body response as XML
-        return etree.XML(body)
+        return resp, etree.XML(body)
 
-    def send_service_provider_saml2_authn_response(self):
-        pass
+    def send_service_provider_saml2_authn_response(
+        self, saml2_idp_authn_response, relay_state, idp_consumer_url):
+
+        _prepare_sp_saml2_authn_response(saml2_idp_authn_response, relay_state)
+
+        resp, body = self.raw_request(
+            idp_consumer_url,
+            'POST',
+            headers=self.ECP_SP_SAML2_REQUEST_HEADERS,
+            body=etree.tostring(saml2_idp_authn_response)
+        )
+        return resp, body
+
+    def send_service_provider_saml2_authn_request(self, sp_url):
+        resp, body = self.raw_request(
+            sp_url,
+            'GET',
+            headers=self.ECP_SP_SAML2_REQUEST_HEADERS
+        )
+        self.expected_success(200, resp.status)
+        return resp, json.load(body)

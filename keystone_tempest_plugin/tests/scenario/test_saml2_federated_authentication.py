@@ -23,6 +23,10 @@ CONF = config.CONF
 
 class TestSaml2FederatedAuthentication(base.BaseIdentityTest):
 
+    HTTP_MOVED_TEMPORARILY = 302
+
+    HTTP_SEE_OTHER = 303
+
     ECP_SAML2_NAMESPACES = {
         'ecp': 'urn:oasis:names:tc:SAML:2.0:profiles:SSO:ecp',
         'S': 'http://schemas.xmlsoap.org/soap/envelope/',
@@ -34,6 +38,8 @@ class TestSaml2FederatedAuthentication(base.BaseIdentityTest):
 
     ECP_IDP_CONSUMER_URL = ('/S:Envelope/S:Header/ecp:Response/'
                             '@AssertionConsumerServiceURL')
+
+    ECP_RELAY_STATE = '//ecp:RelayState'
 
     def setUp(self):
         super(TestSaml2FederatedAuthentication, self).setUp()
@@ -55,14 +61,31 @@ class TestSaml2FederatedAuthentication(base.BaseIdentityTest):
         self.assertEqual(1, len(idp_consumer_url))
 
         self.assertEqual(sp_consumer_url[0], idp_consumer_url[0])
+        return idp_consumer_url
 
     def test_request_unscoped_token(self):
-        saml2_authn_request = (
+        resp, saml2_authn_request = (
             self.saml2_client.send_service_provider_request(self.idp_id,
                 self.protocol_id))
-        saml2_idp_authn_response = (
+        resp, saml2_idp_authn_response = (
             self.saml2_client.send_identity_provider_authn_request(
                 saml2_authn_request, self.idp_url, self.username,
                 self.password))
-        self._assert_consumer_url(
+
+        # Assert that both saml2_authn_request and saml2_idp_authn_response
+        # have the same consume URL.
+        idp_consumer_url = self._assert_consumer_url(
             saml2_authn_request, saml2_idp_authn_response)
+
+        relay_state = self.saml2_authn_request.xpath(
+            self.ECP_RELAY_STATE, namespaces=self.ECP_SAML2_NAMESPACES)[0]
+        resp, body = (
+            self.saml2_client.send_service_provider_saml2_authn_response(
+                saml2_idp_authn_response, relay_state, idp_consumer_url)
+
+        # Must receive a redirect from service provider
+        self.assertIn(relay_state, [HTTP_MOVED_TEMPORARILY, HTTP_SEE_OTHER])
+
+        sp_url = resp['location']
+        resp, body = self.send_service_provider_saml2_authn_response(sp_url)
+        self.assertIn('X-Subject-Token', resp)
