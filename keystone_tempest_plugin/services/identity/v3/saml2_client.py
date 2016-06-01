@@ -89,22 +89,21 @@ class Saml2Client(clients.Federation):
         self._prepare_sp_saml2_authn_response(
             saml2_idp_authn_response, relay_state)
 
+        session = requests.Session()
         # TODO(rodrigods): change to self.raw_request() when it receives
         # support to not follow redirect responses.
-        return requests.post(
+        resp = session.post(
             idp_consumer_url,
             headers=self.ECP_SP_SAML2_REQUEST_HEADERS,
             data=etree.tostring(saml2_idp_authn_response),
             # Do not follow HTTP redirect
             allow_redirects=False
         )
+        return resp, session
 
-    def send_service_provider_unscoped_token_request(self, sp_url):
-        resp, body = self.raw_request(
+    def send_service_provider_unscoped_token_request(self, sp_url, session):
+        resp = session.get(
             sp_url,
-            'GET',
             headers=self.ECP_SP_SAML2_REQUEST_HEADERS
         )
-        self.expected_success(200, resp.status)
-        body = json.load(body)
-        return rest_client.ResponseBody(resp, body)
+        return resp
