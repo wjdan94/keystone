@@ -15,6 +15,7 @@
 import base64
 import copy
 import json
+import requests
 
 from lxml import etree
 
@@ -88,19 +89,16 @@ class Saml2Client(clients.Federation):
         self._prepare_sp_saml2_authn_response(
             saml2_idp_authn_response, relay_state)
 
-        resp, body = self.raw_request(
-            'https://openstack.rduartes.unknown.test:5000/v3/OS-FEDERATION/identity_providers/ipsilon/protocols/saml2/auth',
-            'POST',
+        # TODO(rodrigods): change to self.raw_request() when it receives
+        # support to not follow redirect responses.
+        resp = requests.post(
+            idp_consumer_url,
             headers=self.ECP_SP_SAML2_REQUEST_HEADERS,
-            body=etree.tostring(saml2_idp_authn_response)
+            data=etree.tostring(saml2_idp_authn_response),
+            # Do not follow HTTP redirect
+            allow_redirects=False
         )
-        print('$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$')
-        print('$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$')
-        print(idp_consumer_url)
-        print(resp)
-        print(body)
-        print('$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$')
-        return resp, body
+        return resp.headers, resp.content
 
     def send_service_provider_saml2_authn_request(self, sp_url):
         resp, body = self.raw_request(
