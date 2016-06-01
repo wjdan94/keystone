@@ -45,11 +45,15 @@ class TestSaml2FederatedAuthentication(base.BaseIdentityTest):
         sp_consumer_url = saml2_authn_request.xpath(
             self.ECP_SERVICE_PROVIDER_CONSUMER_URL,
             namespaces=self.ECP_SAML2_NAMESPACES)
+        print('$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$')
+        print(sp_consumer_url)
         self.assertEqual(1, len(sp_consumer_url))
 
         idp_consumer_url = idp_authn_response.xpath(
             self.ECP_IDP_CONSUMER_URL,
             namespaces=self.ECP_SAML2_NAMESPACES)[0]
+        print('$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$')
+        print(idp_consumer_url)
         self.assertEqual(1, len(idp_consumer_url))
 
         self.assertEqual(sp_consumer_url[0], idp_consumer_url[0])
