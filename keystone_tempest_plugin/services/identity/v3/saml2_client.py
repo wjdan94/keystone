@@ -45,9 +45,7 @@ class Saml2Client(clients.Federation):
         self.expected_success(200, resp.status)
 
         # Parse body response as XML
-        body = etree.XML(body)
-
-        return rest_client.ResponseBody(resp, body)
+        return resp, etree.XML(body)
 
     def _prepare_sp_saml2_authn_response(self, saml2_idp_authn_response,
                                          relay_state):
@@ -82,9 +80,7 @@ class Saml2Client(clients.Federation):
         self.expected_success(200, resp.status)
 
         # Parse body response as XML
-        body = etree.XML(body)
-
-        return rest_client.ResponseBody(resp, body)
+        return resp, etree.XML(body)
 
     def send_service_provider_saml2_authn_response(
         self, saml2_idp_authn_response, relay_state, idp_consumer_url):
