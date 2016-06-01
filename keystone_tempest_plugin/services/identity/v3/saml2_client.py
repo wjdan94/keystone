@@ -94,7 +94,7 @@ class Saml2Client(clients.Federation):
             headers=self.ECP_SP_SAML2_REQUEST_HEADERS,
             body=etree.tostring(saml2_idp_authn_response)
         )
-        return rest_client.ResponseBody(resp, body)
+        return resp, body
 
     def send_service_provider_saml2_authn_request(self, sp_url):
         resp, body = self.raw_request(
