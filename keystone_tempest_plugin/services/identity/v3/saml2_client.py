@@ -74,7 +74,7 @@ class Saml2Client(clients.Federation):
              idp_url,
              'POST',
              etree.tostring(saml2_authn_request),
-             headers={'Content-Type': 'text/xml'
+             headers={'Content-Type': 'text/xml',
                       'Authorization': self._basic_auth(username, password)}
         )
 
