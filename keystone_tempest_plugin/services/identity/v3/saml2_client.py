@@ -89,7 +89,7 @@ class Saml2Client(clients.Federation):
             saml2_idp_authn_response, relay_state)
 
         resp, body = self.raw_request(
-            idp_consumer_url,
+            'https://openstack.rduartes.unknown.test:5000/v3/OS-FEDERATION/identity_providers/ipsilon/protocols/saml2/auth',
             'POST',
             headers=self.ECP_SP_SAML2_REQUEST_HEADERS,
             body=etree.tostring(saml2_idp_authn_response)
