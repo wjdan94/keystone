@@ -66,14 +66,13 @@ class TestSaml2EcpFederatedAuthentication(base.BaseIdentityTest):
         return idp_consumer_url[0]
 
     def test_request_unscoped_token(self):
-        resp = self.saml2_client.send_service_provider_request(self.idp_id,
-            self.protocol_id)
+        resp = self.saml2_client.send_service_provider_request(
+            self.keystone_v3_endpoint, self.idp_id, self.protocol_id)
         self.assertEqual(200, resp.status_code)
         saml2_auth_request = etree.XML(resp.content)
 
         resp = self.saml2_client.send_identity_provider_authn_request(
-            saml2_authn_request, self.keystone_v3_endpoint, self.idp_url,
-            self.username, self.password)
+            saml2_authn_request, self.idp_url, self.username, self.password)
         self.assertEqual(200, resp.status_code)
         saml2_idp_authn_response = etree.XML(resp.content)
 
