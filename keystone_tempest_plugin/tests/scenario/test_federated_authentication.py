@@ -83,8 +83,9 @@ class TestSaml2EcpFederatedAuthentication(base.BaseIdentityTest):
 
         relay_state = saml2_authn_request.xpath(
             self.ECP_RELAY_STATE, namespaces=self.ECP_SAML2_NAMESPACES)[0]
+
         resp = self.saml2_client.send_service_provider_saml2_authn_response(
-                saml2_idp_authn_response, relay_state, idp_consumer_url))
+                saml2_idp_authn_response, relay_state, idp_consumer_url)
         # Must receive a redirect from service provider
         self.assertIn(resp.status_code,
                       [self.HTTP_MOVED_TEMPORARILY, self.HTTP_SEE_OTHER])
