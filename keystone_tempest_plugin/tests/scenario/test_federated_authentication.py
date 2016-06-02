@@ -32,7 +32,7 @@ class TestSaml2EcpFederatedAuthentication(base.BaseIdentityTest):
         'ecp': 'urn:oasis:names:tc:SAML:2.0:profiles:SSO:ecp',
         'S': 'http://schemas.xmlsoap.org/soap/envelope/',
         'paos': 'urn:liberty:paos:2003-08'
-   }
+    }
 
     ECP_SERVICE_PROVIDER_CONSUMER_URL = ('/S:Envelope/S:Header/paos:Request/'
                                          '@responseConsumerURL')
@@ -69,7 +69,7 @@ class TestSaml2EcpFederatedAuthentication(base.BaseIdentityTest):
         resp = self.saml2_client.send_service_provider_request(
             self.keystone_v3_endpoint, self.idp_id, self.protocol_id)
         self.assertEqual(200, resp.status_code)
-        saml2_auth_request = etree.XML(resp.content)
+        saml2_authn_request = etree.XML(resp.content)
 
         resp = self.saml2_client.send_identity_provider_authn_request(
             saml2_authn_request, self.idp_url, self.username, self.password)
@@ -85,7 +85,7 @@ class TestSaml2EcpFederatedAuthentication(base.BaseIdentityTest):
             self.ECP_RELAY_STATE, namespaces=self.ECP_SAML2_NAMESPACES)[0]
 
         resp = self.saml2_client.send_service_provider_saml2_authn_response(
-                saml2_idp_authn_response, relay_state, idp_consumer_url)
+            saml2_idp_authn_response, relay_state, idp_consumer_url)
         # Must receive a redirect from service provider
         self.assertIn(resp.status_code,
                       [self.HTTP_MOVED_TEMPORARILY, self.HTTP_SEE_OTHER])
