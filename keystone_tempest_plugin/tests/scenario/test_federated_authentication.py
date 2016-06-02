@@ -12,10 +12,11 @@
 # License for the specific language governing permissions and limitations
 # under the License.
 
-from tempest import config
-from keystone_tempest_plugin.tests import base
-
 from lxml import etree
+
+from tempest import config
+
+from keystone_tempest_plugin.tests import base
 
 
 CONF = config.CONF
@@ -42,7 +43,7 @@ class TestSaml2EcpFederatedAuthentication(base.BaseIdentityTest):
     ECP_RELAY_STATE = '//ecp:RelayState'
 
     def setUp(self):
-        super(TestSaml2FederatedAuthentication, self).setUp()
+        super(TestFederatedAuthentication, self).setUp()
         self.keystone_v3_endpoint = CONF.identity.uri_v3
         self.idp_url = CONF.scenario.fed_idp_ecp_url
         self.username = CONF.scenario.fed_idp_username
