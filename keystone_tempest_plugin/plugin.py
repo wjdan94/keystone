@@ -44,4 +44,4 @@ class KeystoneTempestPlugin(plugins.TempestPlugin):
                 (project_config.identity_feature_group.name,
                  project_config.IdentityFeatureGroup),
                 (project_config.scenario_group.name,
-                 project_config.ScenarioGroup),]
+                 project_config.ScenarioGroup)]

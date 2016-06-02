@@ -77,7 +77,7 @@ class TestSaml2EcpFederatedAuthentication(base.BaseIdentityTest):
         saml2_idp_authn_response = etree.XML(resp.content)
 
         # Assert that both saml2_authn_request and saml2_idp_authn_response
-        # have the same consume URL.
+        # have the same consumer URL.
         idp_consumer_url = self._assert_consumer_url(
             saml2_authn_request, saml2_idp_authn_response)
 
