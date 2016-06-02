@@ -13,18 +13,17 @@
 # under the License.
 
 import copy
-import json
 import requests
 
 from lxml import etree
 
 
-class Saml2Client():
+class Saml2Client(object):
 
     ECP_SP_EMPTY_REQUEST_HEADERS = {
         'Accept': 'text/html, application/vnd.paos+xml',
         'PAOS': ('ver="urn:liberty:paos:2003-08";"urn:oasis:names:tc:'
-        'SAML:2.0:profiles:SSO:ecp"')
+                 'SAML:2.0:profiles:SSO:ecp"')
     }
 
     ECP_SP_SAML2_REQUEST_HEADERS = {'Content-Type': 'application/vnd.paos+xml'}
@@ -40,8 +39,8 @@ class Saml2Client():
     def send_service_provider_request(self, keystone_v3_endpoint,
                                       idp_id, protocol_id):
         return self.session.get(
-             self._idp_auth_url(keystone_v3_endpoint, idp_id, protocol_id),
-             headers=self.ECP_SP_EMPTY_REQUEST_HEADERS
+            self._idp_auth_url(keystone_v3_endpoint, idp_id, protocol_id),
+            headers=self.ECP_SP_EMPTY_REQUEST_HEADERS
         )
 
     def _prepare_sp_saml2_authn_response(self, saml2_idp_authn_response,
@@ -59,14 +58,14 @@ class Saml2Client():
         self._prepare_idp_saml2_request(idp_saml2_request)
 
         return self.session.post(
-             idp_url,
-             headers={'Content-Type': 'text/xml'},
-             data=etree.tostring(idp_saml2_request),
-             auth=(username, password)
+            idp_url,
+            headers={'Content-Type': 'text/xml'},
+            data=etree.tostring(idp_saml2_request),
+            auth=(username, password)
         )
 
     def send_service_provider_saml2_authn_response(
-        self, saml2_idp_authn_response, relay_state, idp_consumer_url):
+            self, saml2_idp_authn_response, relay_state, idp_consumer_url):
 
         self._prepare_sp_saml2_authn_response(
             saml2_idp_authn_response, relay_state)
@@ -79,7 +78,7 @@ class Saml2Client():
             allow_redirects=False
         )
 
-    def send_service_provider_unscoped_token_request(self, sp_url, session):
+    def send_service_provider_unscoped_token_request(self, sp_url):
         return self.session.get(
             sp_url,
             headers=self.ECP_SP_SAML2_REQUEST_HEADERS
