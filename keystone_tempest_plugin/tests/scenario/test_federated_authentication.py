@@ -21,7 +21,7 @@ from lxml import etree
 CONF = config.CONF
 
 
-class TestSaml2FederatedAuthentication(base.BaseIdentityTest):
+class TestSaml2EcpFederatedAuthentication(base.BaseIdentityTest):
 
     HTTP_MOVED_TEMPORARILY = 302
 
@@ -43,6 +43,7 @@ class TestSaml2FederatedAuthentication(base.BaseIdentityTest):
 
     def setUp(self):
         super(TestSaml2FederatedAuthentication, self).setUp()
+        self.keystone_v3_endpoint = CONF.identity.uri_v3
         self.idp_url = CONF.scenario.fed_idp_ecp_url
         self.username = CONF.scenario.fed_idp_username
         self.password = CONF.scenario.fed_idp_password
@@ -64,13 +65,16 @@ class TestSaml2FederatedAuthentication(base.BaseIdentityTest):
         return idp_consumer_url[0]
 
     def test_request_unscoped_token(self):
-        resp, saml2_authn_request = (
-            self.saml2_client.send_service_provider_request(self.idp_id,
-                self.protocol_id))
-        resp, saml2_idp_authn_response = (
-            self.saml2_client.send_identity_provider_authn_request(
-                saml2_authn_request, self.idp_url, self.username,
-                self.password))
+        resp = self.saml2_client.send_service_provider_request(self.idp_id,
+            self.protocol_id)
+        self.assertEqual(200, resp.status_code)
+        saml2_auth_request = etree.XML(resp.content)
+
+        resp = self.saml2_client.send_identity_provider_authn_request(
+            saml2_authn_request, self.keystone_v3_endpoint, self.idp_url,
+            self.username, self.password)
+        self.assertEqual(200, resp.status_code)
+        saml2_idp_authn_response = etree.XML(resp.content)
 
         # Assert that both saml2_authn_request and saml2_idp_authn_response
         # have the same consume URL.
@@ -79,10 +83,8 @@ class TestSaml2FederatedAuthentication(base.BaseIdentityTest):
 
         relay_state = saml2_authn_request.xpath(
             self.ECP_RELAY_STATE, namespaces=self.ECP_SAML2_NAMESPACES)[0]
-        resp, session = (
-            self.saml2_client.send_service_provider_saml2_authn_response(
+        resp = self.saml2_client.send_service_provider_saml2_authn_response(
                 saml2_idp_authn_response, relay_state, idp_consumer_url))
-
         # Must receive a redirect from service provider
         self.assertIn(resp.status_code,
                       [self.HTTP_MOVED_TEMPORARILY, self.HTTP_SEE_OTHER])
@@ -90,6 +92,10 @@ class TestSaml2FederatedAuthentication(base.BaseIdentityTest):
         sp_url = resp.headers['location']
         resp = (
             self.saml2_client.send_service_provider_unscoped_token_request(
-                sp_url, session))
-        self.assertNotEmpty(resp.json())
+                sp_url)
+        # We can receive multiple types of errors here, it also depends on
+        # the mapping and the username used to authenticate in the identity
+        # provider.
+        self.assertEqual(200, resp.status_code)
         self.assertIn('X-Subject-Token', resp.headers)
+        self.assertNotEmpty(resp.json())
