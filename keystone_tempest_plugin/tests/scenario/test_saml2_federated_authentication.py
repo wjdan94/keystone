@@ -91,8 +91,5 @@ class TestSaml2FederatedAuthentication(base.BaseIdentityTest):
         resp = (
             self.saml2_client.send_service_provider_unscoped_token_request(
                 sp_url, session))
-        print('$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$')
-        print('$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$')
-        print(resp.text)
-        print(resp.json())
+        self.assertNotEmpty(resp.json())
         self.assertIn('X-Subject-Token', resp.headers)
