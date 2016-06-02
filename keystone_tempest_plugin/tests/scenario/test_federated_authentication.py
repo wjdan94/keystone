@@ -43,7 +43,7 @@ class TestSaml2EcpFederatedAuthentication(base.BaseIdentityTest):
     ECP_RELAY_STATE = '//ecp:RelayState'
 
     def setUp(self):
-        super(TestFederatedAuthentication, self).setUp()
+        super(TestSaml2EcpFederatedAuthentication, self).setUp()
         self.keystone_v3_endpoint = CONF.identity.uri_v3
         self.idp_url = CONF.scenario.fed_idp_ecp_url
         self.username = CONF.scenario.fed_idp_username
