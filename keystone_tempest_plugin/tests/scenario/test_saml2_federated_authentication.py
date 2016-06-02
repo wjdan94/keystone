@@ -93,5 +93,6 @@ class TestSaml2FederatedAuthentication(base.BaseIdentityTest):
                 sp_url, session))
         print('$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$')
         print('$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$')
-        print(resp.raw)
+        print(resp.text)
+        print(resp.json())
         self.assertIn('X-Subject-Token', resp.headers)
