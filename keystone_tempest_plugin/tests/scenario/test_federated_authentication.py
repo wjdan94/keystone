@@ -51,6 +51,9 @@ class TestSaml2EcpFederatedAuthentication(base.BaseIdentityTest):
         self.idp_id = CONF.scenario.fed_idp_id
         self.protocol_id = CONF.scenario.fed_protocol_id
 
+        # Reset client's session to avoid getting gargabe from another runs
+        self.saml2_client.reset_session()
+
     def _assert_consumer_url(self, saml2_authn_request, idp_authn_response):
         sp_consumer_url = saml2_authn_request.xpath(
             self.ECP_SERVICE_PROVIDER_CONSUMER_URL,

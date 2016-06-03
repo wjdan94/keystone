@@ -29,6 +29,9 @@ class Saml2Client(object):
     ECP_SP_SAML2_REQUEST_HEADERS = {'Content-Type': 'application/vnd.paos+xml'}
 
     def __init__(self):
+        self.reset_session()
+
+    def reset_session(self):
         self.session = requests.Session()
 
     def _idp_auth_url(self, keystone_v3_endpoint, idp_id, protocol_id):
