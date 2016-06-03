@@ -65,7 +65,7 @@ class TestSaml2EcpFederatedAuthentication(base.BaseIdentityTest):
         self.assertEqual(sp_consumer_url[0], idp_consumer_url[0])
         return idp_consumer_url[0]
 
-    def test_request_unscoped_token(self):
+    def _request_unscoped_token(self):
         resp = self.saml2_client.send_service_provider_request(
             self.keystone_v3_endpoint, self.idp_id, self.protocol_id)
         self.assertEqual(200, resp.status_code)
@@ -100,3 +100,15 @@ class TestSaml2EcpFederatedAuthentication(base.BaseIdentityTest):
         self.assertEqual(200, resp.status_code)
         self.assertIn('X-Subject-Token', resp.headers)
         self.assertNotEmpty(resp.json())
+
+        return resp
+
+    def test_request_unscoped_token(self):
+        self._request_unscoped_token()
+
+    def test_request_scoped_token(self):
+        resp = self._request_unscoped_token()
+        token_id = resp.headers['X-Subject-Token']
+        projects = self.auth_client.get_available_projects_scopes(token_id)[
+            'projects']
+        self.assertNotEmpty(projects)

@@ -41,9 +41,9 @@ ScenarioGroup = [
                default='https://ipa.rduartes.unknown.test/idp/saml2/SSO/SOAP',
                help='Identity Provider SAML2/ECP URL'),
     cfg.StrOpt('fed_idp_username',
-               default='admin',
+               default='jlamb',
                help='Username used to login in the Identity Provider'),
     cfg.StrOpt('fed_idp_password',
-               default='FreeIPA4All',
+               default='123',
                help='Password used to login in the Identity Provider'),
 ]
