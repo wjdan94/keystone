@@ -94,6 +94,11 @@ class TestSaml2EcpFederatedAuthentication(base.BaseIdentityTest):
         resp = (
             self.saml2_client.send_service_provider_unscoped_token_request(
                 sp_url))
+        print('$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$')
+        print('$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$')
+        print(resp.content)
+        print('$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$')
+        print('$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$')
         # We can receive multiple types of errors here, it also depends on
         # the mapping and the username used to authenticate in the identity
         # provider. If everything goes fine, we receive an unscoped token.
