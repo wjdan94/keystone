@@ -87,6 +87,10 @@ class TestSaml2EcpFederatedAuthentication(base.BaseIdentityTest):
         relay_state = saml2_authn_request.xpath(
             self.ECP_RELAY_STATE, namespaces=self.ECP_SAML2_NAMESPACES)[0]
 
+        print('%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%'_
+        print(etree.tostring(saml2_idp_authn_response, pretty_print=True))
+        print('%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%'_
+
         resp = self.saml2_client.send_service_provider_saml2_authn_response(
             saml2_idp_authn_response, relay_state, idp_consumer_url)
         # Must receive a redirect from service provider
@@ -97,9 +101,9 @@ class TestSaml2EcpFederatedAuthentication(base.BaseIdentityTest):
         resp = (
             self.saml2_client.send_service_provider_unscoped_token_request(
                 sp_url))
-        # We can receive multiple types of errors here, it also depends on
+        # We can receive multiple types of errors here, the response depends on
         # the mapping and the username used to authenticate in the identity
-        # provider. If everything goes fine, we receive an unscoped token.
+        # provider. If everything works well, we receive an unscoped token.
         self.assertEqual(200, resp.status_code)
         self.assertIn('X-Subject-Token', resp.headers)
         self.assertNotEmpty(resp.json())
