@@ -22,9 +22,21 @@ from keystone_tempest_plugin.services.identity.v3 import auth_client
 from keystone_tempest_plugin.services.identity.v3 import saml2_client
 
 from tempest import clients
+from tempest import config
+from tempest.lib.services.identity.v3 import token_client
+
+
+CONF = config.CONF
 
 
 class Manager(clients.Manager):
+
+    default_params = {
+        'disable_ssl_certificate_validation':
+            CONF.identity.disable_ssl_certificate_validation,
+        'ca_certs': CONF.identity.ca_certificates_file,
+        'trace_requests': CONF.debug.trace_requests
+    }
 
     def __init__(self, credentials, service=None):
         super(Manager, self).__init__(credentials, service)
@@ -40,3 +52,5 @@ class Manager(clients.Manager):
         self.service_providers_client = (
             service_providers_client.ServiceProvidersClient(
                 self.auth_provider))
+        self.tokens_client = token_client.V3TokenClient(
+            CONF.identity.uri_v3, **self.default_params)

@@ -38,3 +38,4 @@ class BaseIdentityTest(test.BaseTestCase):
         cls.mappings_client = cls.keystone_manager.mapping_rules_client
         cls.saml2_client = cls.keystone_manager.saml2_client
         cls.sps_client = cls.keystone_manager.service_providers_client
+        cls.tokens_client = cls.keystone_manager.token_v3_client
