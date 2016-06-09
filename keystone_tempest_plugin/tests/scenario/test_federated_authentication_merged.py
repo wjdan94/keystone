@@ -113,13 +113,13 @@ class TestSaml2EcpFederatedAuthentication(base.BaseIdentityTest):
                                                 project_name=self.project_name,
                                                 password=self.password,
                                                 username=self.username)
-        # maybe needs to check if idp_token is valid
-
-        sp_url = resp['service_providers'][0]['auth_url']
+        
+	sp_url = resp['service_providers'][0]['auth_url']
         sp_id = resp['service_providers'][0]['id']
         sp_ecp_url = resp['service_providers'][0]['sp_url']
-
-        resp, assertion = self.saml2_client.get_ecp_assertion(idp_ecp_url=self.idp_url,
+	sp_ip = resp['service_providers'][0]['sp_url'].split('/')[2]        
+	
+	resp, assertion = self.saml2_client.get_ecp_assertion(idp_ecp_url=self.idp_url,
                                                         sp_id=sp_id, token=idp_token)
         self.assertEqual(200, resp.status_code)
 
@@ -127,7 +127,6 @@ class TestSaml2EcpFederatedAuthentication(base.BaseIdentityTest):
                                                         saml2_idp_assertion=assertion)
         self.assertIn(resp.status_code,
                       [self.HTTP_MOVED_TEMPORARILY, self.HTTP_SEE_OTHER])
-
         resp = self.saml2_client.send_service_provider_unscoped_token_request(sp_url)
 
         self.assertEqual(201, resp.status_code)
@@ -135,6 +134,7 @@ class TestSaml2EcpFederatedAuthentication(base.BaseIdentityTest):
         self.assertNotEmpty(resp.json())
 
         return resp
+
 
     def test_request_unscoped_token(self):
         self._request_unscoped_token()
@@ -161,3 +161,12 @@ class TestSaml2EcpFederatedAuthentication(base.BaseIdentityTest):
         self.tokens_client.auth(
             project_id=projects[0]['id'], token=token_id)
 	
+    def test_request_scoped_k2k_token(self):
+        resp = self._request_unscoped_k2k_token()
+	unscoped_token = resp.headers['x-subject-token']
+	
+	headers = {'x-auth-token': unscoped_token,
+                   'Content-Type': 'application/json'}
+        resp = self.saml2_client.auth(token=unscoped_token)
+	
+	return resp

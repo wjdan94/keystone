@@ -36,13 +36,14 @@ class Saml2Client(object):
 
     def __init__(self):
         self.reset_session()
-        self.token_client = token_client.V3TokenClient(self.IDP_AUTH_URL)
+        self.token_client_idp = token_client.V3TokenClient(self.IDP_AUTH_URL)
+	self.token_client_sp = token_client.V3TokenClient('http://192.168.0.12:5000/v3/auth/tokens')	
 
     def get_token(self, **kwargs):
-        return self.token_client.get_token(**kwargs)
+        return self.token_client_idp.get_token(**kwargs)
 
     def auth(self, **kwargs):
-        return self.token_client.auth(**kwargs)
+        return self.token_client_sp.auth(**kwargs)
 
     def reset_session(self):
         self.session = requests.Session()
